@@ -1,26 +1,183 @@
+@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #edf6ff;
+  --foreground: #0f172a;
+  --panel: rgba(255, 255, 255, 0.86);
+  --card: #ffffff;
+  --card-soft: #f8fafc;
+  --indigo: #4f46e5;
+  --indigo-soft: rgba(79, 70, 229, 0.08);
+  --sky: #5ba3d9;
+  --rose: #f97316;
+  --emerald: #10b981;
+  --text-soft: #475569;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: "Sarabun", "Kanit", "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e8f4fd 0%, #fef9e7 50%, #e8f4fd 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Sarabun", "Kanit", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+main {
+  min-height: 100vh;
+}
+
+@layer components {
+  .legacy-shell {
+    @apply min-h-screen bg-[radial-gradient(circle_at_top,_#e0f2fe,_#f8fafc_35%,_#eef2ff)] text-slate-900;
+  }
+
+  .legacy-navbar {
+    @apply sticky top-0 z-50 border-b border-white/10 bg-[rgba(49,46,129,0.9)] text-white shadow-[0_4px_20px_rgba(15,23,42,0.12)] backdrop-blur-xl;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .legacy-brand {
+    @apply bg-gradient-to-r from-white to-slate-300 bg-clip-text text-xl font-semibold tracking-[0.08em] text-transparent;
+    font-family: "Kanit", "Sarabun", sans-serif;
+  }
+
+  .legacy-nav {
+    @apply flex items-center gap-2;
+    flex-wrap: wrap;
+  }
+
+  .legacy-nav-item {
+    @apply relative flex items-center rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white;
+    font-family: "Sarabun", "Segoe UI", sans-serif;
+    display: inline-flex;
+    cursor: pointer;
+  }
+
+  .legacy-nav-item::after {
+    content: "";
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: #60a5fa;
+    transform: translateX(-50%);
+    transition: width 0.2s ease;
+  }
+
+  .legacy-nav-item:hover::after {
+    width: 60%;
+  }
+
+  .legacy-card {
+    @apply relative rounded-[22px] border border-slate-200 bg-white/90 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.07)] backdrop-blur-sm;
+    border: 1px solid rgba(59, 130, 246, 0.08);
+  }
+
+  .legacy-dashboard-card {
+    @apply rounded-[20px] border border-slate-200 bg-white/90 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.06)];
+  }
+
+  .legacy-card-soft {
+    @apply rounded-[18px] border border-slate-200 bg-slate-50 p-4;
+  }
+
+  .legacy-card-title {
+    font-family: "Kanit", "Sarabun", sans-serif;
+    @apply text-2xl font-semibold text-indigo-900;
+  }
+
+  .legacy-dashboard-stat {
+    @apply rounded-[16px] border border-slate-200 bg-slate-50 p-5 shadow-sm;
+  }
+
+  .legacy-dashboard-doctor {
+    @apply rounded-[16px] border border-slate-200 bg-[linear-gradient(180deg,rgba(203,153,255,0.08),rgba(236,72,153,0.03))] p-4 shadow-sm;
+    min-height: 190px;
+  }
+
+  .legacy-dropdown {
+    @apply invisible absolute left-0 top-full z-40 mt-2 min-w-[220px] rounded-xl border border-slate-200 bg-white p-2 text-slate-700 opacity-0 shadow-[0_10px_25px_rgba(15,23,42,0.12)] transition-all duration-200;
+    animation: dropdownSlide 0.2s ease-out;
+    pointer-events: none;
+  }
+
+  .group:hover .legacy-dropdown,
+  .group:focus-within .legacy-dropdown {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .legacy-dropdown-item {
+    @apply block rounded-lg px-3 py-2 text-sm text-slate-700 transition-all duration-150 hover:bg-slate-100 hover:text-indigo-600 hover:translate-x-1;
+  }
+
+  .legacy-stat-card {
+    @apply rounded-[18px] border border-slate-200 p-5 shadow-sm;
+  }
+
+  .legacy-input {
+    @apply w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100;
+  }
+
+  .legacy-button {
+    @apply inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-sky-500 px-5 py-3 font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70;
+  }
+
+  .legacy-button-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50;
+  }
+
+  .legacy-badge {
+    @apply inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600;
+  }
+
+  .legacy-grid-3 {
+    @apply grid gap-4 md:grid-cols-3;
+  }
+
+  .legacy-user-badge {
+    @apply rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90;
+    font-family: "Sarabun", "Segoe UI", sans-serif;
+  }
+
+  .legacy-mini-stat {
+    @apply flex-1 rounded-[10px] bg-white p-2 text-center shadow-sm;
+  }
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
