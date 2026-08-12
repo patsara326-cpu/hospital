@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบลงทะเบียนและประเมินผู้ป่วย</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- เพิ่ม fonts จาก SMI-V (optional) -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Login Page -->
+  <div class="login-container" id="loginPage">
+    <div class="login-box">
+      <h1>เข้าสู่ระบบ</h1>
+
+      <div class="input-group">
+        <label>Username</label>
+        <input type="email" id="username" placeholder="กรอก Username">
+      </div>
+
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="กรอก Password">
+      </div>
+
+      <button id="loginBtn" class="btn" type="button">เข้าสู่ระบบ</button>
+
+      <div class="register-link">
+        ยังไม่มีบัญชี?
+        <a id="openRegLink" href="#">สมัครสมาชิก</a>
+      </div>
+    </div>
+  </div>
+      
+  <!-- Main App -->
+  <div class="app-container" id="appPage">
+
+    <div class="navbar">
+      <input type="checkbox" id="menu-click-toggle" style="display:none;">
+      <label for="menu-click-toggle" class="hamburger-icon">☰</label>
+      <h2 onclick="showPage('home')">ระบบผู้ป่วยจิตเวช</h2>
+
+      <div class="nav-menu">
+        <div class="nav-item" onclick="showPage('home')">
+          หน้าหลัก
+        </div>
+
+        <div class="nav-item">
+          ลงทะเบียน
+          <div class="dropdown">
+            <div onclick="showPage('newPatient')">ลงทะเบียนผู้ป่วยแรกรับ</div>
+            <div onclick="showPage('editPatient')">ลงทะเบียนผู้ป่วยเพิ่มเติม</div>
+            <div onclick="showPage('smiv')">ทะเบียนจำหน่ายผู้ป่วย</div>
+          </div>
+        </div>
+
+        <div class="nav-item" onclick="showPage('assessment')">
+          ประเมินรายเวร
+        </div>
+
+        <div class="nav-item">
+          บันทึกข้อมูล
+            <div class="dropdown">
+            <div onclick="showPage('oldPatient')">ประวัติการจำหน่าย</div>
+            <div onclick="showPage('ior')">บันทึก IOR</div>
+            <div onclick="showPage('ipdMale')">IPD ชาย</div>
+            <div onclick="showPage('ipdFemale')">IPD หญิง</div>
+          </div>
+        </div>
+
+        <div class="nav-item">
+          สถิติ
+          <div class="dropdown">
+            <div class="dropdown-sub" style="position:relative; z-index:1200;">
+              สถิติผู้ป่วยชาย
+              <div class="dropdown-sub-menu" style="z-index:1201;">
+                <div onclick="showPage('male-admission')">รับใหม่</div>
+                <div onclick="showPage('male-discharge')">จำหน่าย</div>
+              </div>
+            </div>
+            <div class="dropdown-sub">
+              สถิติผู้ป่วยหญิง
+              <div class="dropdown-sub-menu">
+                <div onclick="showPage('female-admission')">รับใหม่</div>
+                <div onclick="showPage('female-discharge')">จำหน่าย</div>
+              </div>
+            </div>
+            <div onclick="showPage('incident-statistics')">สถิติผู้ป่วยอุบัติการณ์</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="userArea">
+        <div id="userMenuContainer">
+          <button id="userMenuBtn" type="button" class="logout-btn" style="display:none;"></button>
+          <div id="userDropdown" class="dropdown">
+            <div id="dd-username"></div>
+            <div id="dd-name"></div>
+            <div class="dd-logout-container">
+              <button id="dd-logout-btn" class="btn" style="width:100%; background: #ef4444; padding: 8px; font-size: 14px; border-radius: 8px;">ออกจากระบบ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content" id="contentArea">
+
+      <!-- Home page / Dashboard -->
+      <div id="page-home" class="max-w-2xl mx-auto p-6">
+        <div class="card" id="dashboard-card">
+          <div id="dashboard-top" style="display:flex;flex-direction:column;gap:12px;">
+            <h2 class="heading-font">ยอดผู้ป่วยที่รับการรักษาในหอผู้ป่วยจิตเวช</h2>
+            <div id="dashboardDate" class="medium-muted">วันที่</div>
+
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1; background:#ffd8a8; padding:14px; border-radius:12px; display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <div class="small-muted">ยอดรวม</div>
+                <div id="dashboard-total" style="font-size:44px;font-weight:700;margin-top:8px;">0</div>
+              </div>
+
+              <div style="flex:1; background:#ffffff; padding:14px; border-radius:12px; display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <div class="small-muted">จิตเวชทั่วไป</div>
+                <div id="dashboard-gen" style="font-size:36px;font-weight:700;margin-top:8px;">0</div>
+              </div>
+
+              <div style="flex:1; background:#fff7ed; padding:14px; border-radius:12px; display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <div class="small-muted">SMI-V</div>
+                <div id="dashboard-smiv" style="font-size:36px;font-weight:700;margin-top:8px;">0</div>
+              </div>
+            </div>
+          </div>
+
+          <hr style="margin:14px 0; border:none; border-top:1px solid #eef2ff;">
+
+          <div id="dashboard-bottom" style="display:flex;gap:12px;">
+            <!-- Left: Male ward -->
+            <div style="flex:1;">
+              <div style="background:#dff6ff; padding:12px; border-radius:12px; height:100%;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <div class="small-muted">หอผู้ป่วยชาย</div>
+                </div>
+                <div id="ward-male-total" style="font-size:36px;font-weight:700;text-align:center;margin-top:8px;">0</div>
+
+                <div style="display:flex;gap:8px;margin-top:10px;">
+                  <div style="flex:1; background:#fff; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted">จิตเวชทั่วไป</div>
+                    <div id="ward-male-gen" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                  <div style="flex:1; background:#fff; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted">SMI-V</div>
+                    <div id="ward-male-smiv" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:6px;margin-top:10px;">
+                  <div style="flex:1; background:#44c013; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted"></div>
+                    <div id="ward-male-smiv1" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                  <div style="flex:1; background:#e1f00c; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted"></div>
+                    <div id="ward-male-smiv2" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                  <div style="flex:1; background:#f39912; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted"></div>
+                    <div id="ward-male-smiv3" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                  <div style="flex:1; background:#f00808; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted"></div>
+                    <div id="ward-male-smiv4" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Female ward -->
+            <div style="flex:1;">
+              <div style="background:#ffe6f0; padding:12px; border-radius:12px; height:100%;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <div class="small-muted">หอผู้ป่วยหญิง</div>
+                </div>
+                <div id="ward-female-total" style="font-size:36px;font-weight:700;text-align:center;margin-top:8px;">0</div>
+
+                <div style="display:flex;gap:8px;margin-top:10px;">
+                  <div style="flex:1; background:#fff; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted">จิตเวชทั่วไป</div>
+                    <div id="ward-female-gen" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                  <div style="flex:1; background:#fff; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted">SMI-V</div>
+                    <div id="ward-female-smiv" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:6px;margin-top:10px;">
+                  <div style="flex:1; background:#44c013; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted"></div>
+                    <div id="ward-female-smiv1" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                  <div style="flex:1; background:#e1f00c; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted"></div>
+                    <div id="ward-female-smiv2" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                  <div style="flex:1; background:#f39912; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted"></div>
+                    <div id="ward-female-smiv3" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                  <div style="flex:1; background:#f00808; padding:8px; border-radius:8px; text-align:center;">
+                    <div class="small-muted"></div>
+                    <div id="ward-female-smiv4" style="font-weight:700;margin-top:6px;">0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Floating navigation arrows (positioned at card edges) -->
+          <button id="dashboard-prev-home" class="btn-arrow dashboard-arrow left" aria-label="ย้อนกลับ" style="display:none">◀</button>
+          <button id="dashboard-next-home" class="btn-arrow dashboard-arrow right" data-next-page="page-dashboard-2" aria-label="ไปหน้าถัดไป">▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register modal removed; keeping only the login register link for now -->
+
+    <!-- Dashboard page 2: per-doctor counts -->
+    <div id="page-dashboard-2" class="hidden max-w-2xl mx-auto p-6">
+      <div class="card" id="dashboard-2-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 class="heading-font">ยอดผู้ป่วยแยกตามแพทย์ผู้รับ</h2>
+          <div class="small-muted">อัพเดต: <span id="dashboard2Date"></span></div>
+        </div>
+
+        <div id="dashboard-2-grid" style="display:grid; grid-template-columns:repeat(3,1fr); grid-auto-rows:minmax(140px,auto); gap:12px; margin-top:12px;">
+          <!-- doctor cards injected by JavaScript -->
+        </div>
+
+        <!-- Navigation arrows for dashboard-2 -->
+        <button id="dashboard-prev-2" class="btn-arrow dashboard-arrow left" aria-label="ย้อนกลับ">◀</button>
+        <button id="dashboard-next-2" class="btn-arrow dashboard-arrow right" data-next-page="page-dashboard-3" aria-label="ไปหน้าถัดไป">▶</button>
+      </div>
+    </div>
+
+    <!-- Dashboard page 3: doctor 7 -->
+    <div id="page-dashboard-3" class="hidden max-w-2xl mx-auto p-6">
+      <div class="card" id="dashboard-3-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 class="heading-font">ยอดผู้ป่วยแยกตามแพทย์ผู้รับ</h2>
+          <div class="small-muted">อัพเดต: <span id="dashboard3Date"></span></div>
+        </div>
+
+        <div id="dashboard-3-grid" style="display:grid; grid-template-columns:repeat(3,1fr); grid-auto-rows:minmax(140px,auto); gap:12px; margin-top:12px;">
+          <!-- doctor cards injected by JavaScript -->
+        </div>
+
+        <!-- Navigation arrows for dashboard-3 -->
+        <button id="dashboard-prev-3" class="btn-arrow dashboard-arrow left" aria-label="ย้อนกลับ">◀</button>
+        <button id="dashboard-next-3" class="btn-arrow dashboard-arrow right" aria-label="กลับหน้าหลัก">▶</button>
+      </div>
+    </div>
+
+      <!-- New patient (SMI-V multi-page form) -->
+      <div id="page-newPatient" class="hidden">
+        <div class="max-w-2xl mx-auto p-6">
+          <div id="sv-form" class="card">
+
+            <div id="sv_page1">
+              <h2 class="heading-font">แบบประเมินคัดกรองผู้ป่วย SMI-V แรกรับ</h2>
+              <p class="small-muted">กรุณากรอกข้อมูลให้ครบทุกช่อง</p>
+
+              <div class="form-section" style="margin-top:12px;">
+                <div class="form-box">
+                  <label for="firstName">1. ชื่อผู้ป่วย</label>
+                  <input type="text" id="firstName" class="form-input" placeholder="กรอกชื่อ">
+                </div>
+
+                <div class="form-box">
+                  <label for="lastName">2. นามสกุลผู้ป่วย</label>
+                  <input type="text" id="lastName" class="form-input" placeholder="กรอกนามสกุล">
+                </div>
+
+                <div class="form-box">
+                  <label for="gender">3. เพศ</label>
+                  <select id="gender" class="form-select">
+                    <option value="">-- เลือกเพศ --</option>
+                    <option value="หญิง">เพศหญิง</option>
+                    <option value="ชาย">เพศชาย</option>
+                  </select>
+                </div>
+
+                <div class="form-box">
+                  <label for="age">4. อายุ (ปี)</label>
+                  <input type="number" id="age" class="form-input" placeholder="กรอกอายุ" min="0" max="150">
+                </div>
+
+                <div class="form-box" style="grid-column:1 / -1;">
+                  <label for="hn">5. HN ผู้ป่วย</label>
+                  <input type="text" id="hn" class="form-input" placeholder="กรอก HN">
+                </div>
+
+
+              </div>
+
+              <div id="page1Error" class="hidden" style="color:#b91c1c;margin-top:12px;"></div>
+              <div style="margin-top:16px;"><button id="sv_nextBtn" class="btn">ถัดไป - ประเมิน SMI-V</button></div>
+            </div>
+
+            <div id="sv_page2" class="hidden">
+              <h3>แบบประเมินคัดกรอง SMI-V</h3>
+              <p class="small-muted">เลือกข้อที่ตรงกับอาการผู้ป่วยมากที่สุด (เลือกได้ 1 ข้อ)</p>
+
+              <div style="margin-top:12px;">
+                <label class="radio-card"><input type="radio" name="smiV" value="SMI-V 1"> <strong>SMI-V 1</strong> - รุนแรงต่อตนเอง<br><small>เช่น มีประวัติทำร้ายตนเองด้วยวิธีที่รุนแรง มีเจตนาหรือมุ่งหวังให้เสียชีวิต</small></label>
+                <label class="radio-card"><input type="radio" name="smiV" value="SMI-V 2"> <strong>SMI-V 2</strong> - รุนแรงต่อผู้อื่น/สังคม<br><small>เช่น มีประวัติทำร้ายตนเองด้วยวิธีที่รุนแรง/ก่อเหตุรุนแรงทำให้หวาดกลัว สะเทือนขวัญในชุมชน</small></label>
+                <label class="radio-card"><input type="radio" name="smiV" value="SMI-V 3"> <strong>SMI-V 3</strong> - มีอาการทางจิตและคิดมุ่งร้ายเฉพาะเจาะจง<br><small>เช่น มีอาการหลงผิด มีความคิดทำร้ายตนเอง/ผู้อื่นให้ถึงแก่ชีวิตหรือมุ่งร้ายผู้อื่นแบบเฉพาะเจาะจง เช่น ระบุชื่อบุคคลที่จะมุ่งทำร้าย</small></label>
+                <label class="radio-card"><input type="radio" name="smiV" value="SMI-V 4"> <strong>SMI-V 4</strong> - ก่อคดีอาชญากรรมรุนแรง<br><small>เช่น เคยมีประวัติก่อคดีอาญารุนแรง (ฆ่า พยายามฆ่า ข่มขืน วางเพลิง)</small></label>
+                <label class="radio-card"><input type="radio" name="smiV" value="ไม่เข้าข่าย SMI-V"> <strong>ข้อ 5</strong> - ไม่มีอาการเข้าข่าย SMI‑V</label>
+              </div>
+
+              <div id="page2Error" class="hidden" style="color:#b91c1c;margin-top:12px;"></div>
+              <div style="margin-top:16px;display:flex;gap:12px;">
+                <button id="sv_backBtn" class="btn" style="background:#94a3b8;">ย้อนกลับ</button>
+                <button id="sv_submitBtn" class="btn">บันทึกผลประเมิน</button>
+              </div>
+            </div>
+
+            <div id="sv_page3" class="hidden">
+              <h3>OAS (Overt Aggression Scale)</h3>
+              <p class="small-muted">กรุณาเลือกแถวที่ตรงกับพฤติกรรมของผู้ป่วยมากที่สุด</p>
+
+              <div class="oas-table-wrap" style="margin-top:12px; ">
+                <table class="oas-table">
+                  <thead>
+                    <tr>
+                      <th>พฤติกรรม / ระดับความก้าวร้าวรุนแรง</th>
+                      <th>1. พฤติกรรมก้าวร้าวรุนแรงต่อตนเอง</th>
+                      <th>2. พฤติกรรมก้าวร้าวรุนแรงต่อผู้อื่นทั้งทางคำพูด และการแสดงออก</th>
+                      <th>3. พฤติกรรมก้าวร้าวรุนแรงต่อทรัพย์สิน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="oas-row" data-oas="1">
+                      <td>
+                        <label class="oas-row-label">
+                          <input type="radio" name="oasScore" value="1" class="oas-radio-hidden">
+                          <strong style="color:#f59e0b;">1. กึ่งเร่งด่วน (Semi-urgency)<br>OAS = 1 คะแนน</strong>
+                        </label>
+                      </td>
+                      <td></td>
+                      <td>หงุดหงิดส่งเสียงดังตะโกนด้วยความโกรธ หรือตะโกนด่าผู้อื่นด้วยถ้อยคำไม่รุนแรง</td>
+                      <td>ปิดประตูเสียงดัง รื้อข้าวของกระจัดกระจาย</td>
+                    </tr>
+                    <tr class="oas-row" data-oas="2">
+                      <td>
+                        <label class="oas-row-label">
+                          <input type="radio" name="oasScore" value="2" class="oas-radio-hidden">
+                          <strong style="color:#f97316;">2. เร่งด่วน (Urgency)<br>OAS = 2 คะแนน</strong>
+                        </label>
+                      </td>
+                      <td>ขีดข่วนผิดหนัง ตีตนเอง ดึงผม โขกศีรษะตัวเองเป็นรอยขนาดเล็ก</td>
+                      <td>ด่าคำหยาบใช้คำสกปรกรุนแรง แสดงท่าทางคุกคาม เช่น ถลกเสื้อผ้า ทำท่าต่อยลม หรือ กระชากคอเสื้อผู้อื่น พุ่งชน เตะ ผลัก หรือดึงผมผู้อื่นแตะไม่ได้รับบาดเจ็บ</td>
+                      <td>ขว้าง เตะ ทุบวัตถุ หรือ สิ่งของ</td>
+                    </tr>
+                    <tr class="oas-row" data-oas="3">
+                      <td>
+                        <label class="oas-row-label">
+                          <input type="radio" name="oasScore" value="3" class="oas-radio-hidden">
+                          <strong style="color:#dc2626;">3. ฉุกเฉิน (Emergency)<br>OAS = 3 คะแนน</strong>
+                        </label>
+                      </td>
+                      <td>ทำร้ายตนเองรุนแรง เช่น มีรอยช้ำ มีรอยกรีดลึก เลือดออก หรือ มีการบาดเจ็บอวัยวะภายใน หรือ หมดสติ</td>
+                      <td>พูดข่มขู่จะทำร้ายผู้อื่นชัดเจน เช่น ฉันจะฆ่าแก เป็นต้น ทำร้ายผู้อื่นจนได้รับบาดเจ็บ เช่น ช้ำ เคล็ด บวม เกิดบาดแผล กระดูกหัก หรือเกิดการบาดเจ็บของอวัยวะภายในหรือหมดสติ</td>
+                      <td>ทำสิ่งของแตกหัก กระจัดกระจาย เช่น ทุบกระจก ขว้างแก้ว จาน มีด หรือสิ่งของที่เป็นอันตรายหรือจุดไฟเผา</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div id="page3Error" class="hidden" style="color:#b91c1c;margin-top:12px;"></div>
+              <div style="margin-top:16px;display:flex;gap:12px;">
+                <button id="sv_backTo2Btn" class="btn" style="background:#94a3b8;">ย้อนกลับ</button>
+                <button id="sv_toPage4Btn" class="btn">ต่อไป - ข้อมูลเพิ่มเติม</button>
+              </div>
+            </div>
+
+            <!-- ป๊อปอัพคำแนะนำการดูแลตามระดับ OAS ที่เลือก -->
+            <div id="oasCareModal" class="modal-overlay hidden">
+              <div class="modal-card">
+                <h3 id="oasCareModalTitle" style="margin-top:0;"></h3>
+                <div id="oasCareModalBody" class="small-muted" style="text-align:left;"></div>
+                <div style="margin-top:20px;display:flex;gap:12px;">
+                  <button id="oasCareBackBtn" class="btn" style="background:#94a3b8;">ย้อนกลับ</button>
+                  <button id="oasCareContinueBtn" class="btn">ไปต่อ - ข้อมูลเพิ่มเติม</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="sv_page4" class="hidden">
+              <h3>ประเมินข้อมูลเพิ่มเติม</h3>
+
+              <div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+                <div class="form-box">
+                  <h4 style="color:#dc2626;">1. พฤติกรรมรุนแรงที่นำส่ง</h4>
+                  <label for="aggressiveBehavior">กรอกข้อมูลพฤติกรรมนำส่ง</label>
+                  <textarea id="aggressiveBehavior" class="form-textarea" placeholder="เช่น ทำร้ายตนเอง, ทำร้ายผู้อื่น, ขว้างปา, ทำลายทรัพย์สิน เป็นต้น"></textarea>
+                </div>
+
+                <div class="form-box">
+                  <h4 style="color:#ea580c;">2. สุราและสารเสพติด</h4>
+                  <label for="substanceUse">การใช้สารเสพติด/สุรา</label>
+                  <select id="substanceUse" class="form-select">
+                    <option value="">-- เลือก --</option>
+                    <option value="ไม่ใช้">ไม่ใช้</option>
+                    <option value="ใช้">ใช้</option>
+                  </select>
+                  <div id="substanceTypeDiv" class="hidden" style="margin-top:8px;">
+                    <label for="substanceType">ประเภทสารเสพติด/สุรา</label>
+                    <select id="substanceType" class="form-select">
+                      <option value="">-- เลือก --</option>
+                      <option value="ใช้ยาเสพติด">ใช้ยาเสพติด</option>
+                      <option value="ใช้สุรา">ใช้สุรา</option>
+                      <option value="ใช้ทั้งสารเสพติดและสุรา">ใช้ทั้งสารเสพติดและสุรา</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-box">
+                  <h4 style="color:#3b82c4;">3. การกลับเข้ามารับการรักษา</h4>
+                  <label for="readmit28">3.1 ผู้ป่วย readmit ใน 28 วัน</label>
+                  <select id="readmit28" class="form-select">
+                    <option value="">-- เลือก --</option>
+                    <option value="ใช่">ใช่</option>
+                    <option value="ไม่ใช่">ไม่ใช่</option>
+                  </select>
+
+                  <label for="admit3times" style="margin-top:8px;display:block;">3.2 ผู้ป่วย Admit มากกวหรือเท่ากับ 3 ครั้งใน 1 ปี</label>
+                  <select id="admit3times" class="form-select">
+                    <option value="">-- เลือก --</option>
+                    <option value="ใช่">ใช่</option>
+                    <option value="ไม่ใช่">ไม่ใช่</option>
+                  </select>
+
+                  <div id="admitNumberDiv" class="hidden" style="margin-top:8px;">
+                    <label for="admitNumber">ครั้งนี้ Admit เป็นครั้งที่เท่าไหร่</label>
+                    <input id="admitNumber" type="number" min="1" class="form-input" placeholder="กรอกจำนวนครั้ง">
+                  </div>
+                </div>
+
+                
+
+              </div>
+
+              <div id="page4Error" class="hidden" style="color:#b91c1c;margin-top:12px;"></div>
+              <div style="margin-top:16px;display:flex;gap:12px;">
+                <button id="sv_backFrom4Btn" class="btn" style="background:#94a3b8;">ย้อนกลับ</button>
+                <button id="sv_toPage5Btn" class="btn">ต่อไป - ที่อยู่ & ผู้ดูแล</button>
+              </div>
+            </div>
+
+            <div id="sv_page5" class="hidden">
+              <h3>ข้อมูลที่อยู่และผู้ดูแล</h3>
+
+              <div style="margin-top:12px;">
+                <div class="form-box">
+                  <label for="residenceTypeSelect">1. สถานภาพที่อยู่</label>
+                  <select id="residenceTypeSelect" class="form-select">
+                    <option value="">-- เลือกสถานภาพที่อยู่ --</option>
+                    <option value="เร่ร่อน/อยู่สถานสงเคราะห์">เร่ร่อน/อยู่สถานสงเคราะห์</option>
+                    <option value="มีที่อยู่เป็นหลักแหล่ง">มีที่อยู่เป็นหลักแหล่ง</option>
+                  </select>
+                </div>
+
+                <div id="addressSection" class="hidden">
+                  <div class="form-box">
+                    <label for="residenceDistrict">2. เขตที่อยู่</label>
+                    <select id="residenceDistrict" class="form-select">
+                      <option value="">-- เลือกเขต --</option>
+                      <option value="ในเขตอำเภอเมืองชลบุรี">ในเขตอำเภอเมืองชลบุรี</option>
+                      <option value="นอกเขตอำเภอเมืองชลบุรี">นอกเขตอำเภอเมืองชลบุรี</option>
+                      <option value="นอกจังหวัด">นอกจังหวัด</option>
+                    </select>
+                  </div>
+
+                  <div id="subdistrictSection" class="hidden form-box">
+                    <label for="residenceSubdistrict">3. เลือกตำบล (ในเขตอำเภอเมืองชลบุรี)</label>
+                    <select id="residenceSubdistrict" class="form-select">
+                      <option value="">-- เลือกตำบล --</option>
+                      <option>บางทราย</option><option>บางปลาสร้อย</option><option>บ้านโขด</option><option>มะขามหย่ง</option><option>บ้านสวน</option><option>หนองรี</option><option>หนองข้างคอก</option><option>นาป่า</option><option>ดอนหัวฬ่อ</option><option>หนองไม้แดง</option><option>คลองตำหรุ</option><option>เสม็ด</option><option>ห้วยกะปิ</option><option>บ้านปึก</option><option>อ่างศิลา</option><option>แสนสุข</option><option>เหมือง</option><option>สำนักบก</option>
+                    </select>
+                  </div>
+
+                  <div id="otherDistrictSection" class="hidden form-box">
+                    <label for="residenceOtherDistrict">3. เลือกอำเภอ</label>
+                    <select id="residenceOtherDistrict" class="form-select">
+                      <option value="">-- เลือกอำเภอ --</option>
+                      <option>พนัสนิคม</option><option>พานทอง</option><option>บ้านบึง</option><option>ศรีราชา</option><option>บางละมุง</option><option>สัตหีบ</option><option>หนองใหญ่</option><option>บ่อทอง</option><option>เกาะจันทร์</option><option>เกาะสีชัง</option>
+                    </select>
+                  </div>
+
+                  <div class="form-box">
+                    <label for="residenceDetails">รายละเอียดที่อยู่</label>
+                    <textarea id="residenceDetails" class="form-textarea" placeholder="เช่น บ้านเลขที่ ซอย ถนน หมู่บ้าน เป็นต้น"></textarea>
+                  </div>
+                </div>
+
+                <div class="form-box" style="margin-top:12px;">
+                  <label for="caregiverStatusSelect">4. สถานภาพผู้ดูแล</label>
+                  <select id="caregiverStatusSelect" class="form-select">
+                    <option value="">-- เลือกสถานภาพผู้ดูแล --</option>
+                    <option value="มีผู้ดูแลหลัก">มีผู้ดูแลหลัก</option>
+                    <option value="มีผู้ดูแลแต่ไม่ได้อยู่ด้วยกัน">มีผู้ดูแลแต่ไม่ได้อยู่ด้วยกัน</option>
+                    <option value="อยู่คนเดียว">อยู่คนเดียว</option>
+                  </select>
+                </div>
+
+                <div id="caregiverDetailsSection" class="hidden form-box">
+                  <h4>ข้อมูลผู้ดูแล</h4>
+                  <label for="caregiverNameInput">ชื่อผู้ดูแล</label>
+                  <input id="caregiverNameInput" type="text" class="form-input">
+
+                  <label for="caregiverRelationInput" style="margin-top:8px;display:block;">ความสัมพันธ์</label>
+                  <select id="caregiverRelationInput" class="form-select">
+                    <option value="">-- เลือกความสัมพันธ์ --</option>
+                    <option value="บิดามารดา">บิดามารดา</option>
+                    <option value="คู่สมรส">คู่สมรส</option>
+                    <option value="พี่น้อง">พี่น้อง</option>
+                    <option value="ญาติ">ญาติ</option>
+                    <option value="บุตร">บุตร</option>
+                    <option value="อื่นๆ">อื่นๆ</option>
+                  </select>
+                  <input id="caregiverRelationOther" class="form-input hidden" placeholder="ระบุความสัมพันธ์อื่นๆ" style="margin-top:8px;">
+
+                  <label for="caregiverPhoneInput" style="margin-top:8px;display:block;">เบอร์โทรศัพท์ผู้ดูแล</label>
+                  <input id="caregiverPhoneInput" type="tel" class="form-input" placeholder="เช่น 0812345678">
+                </div>
+
+                <div id="patientPhoneSection" class="hidden form-box">
+                  <h4>เบอร์โทรศัพท์ผู้ป่วย</h4>
+                  <input id="patientPhoneInput" type="tel" class="form-input" placeholder="เช่น 0812345678">
+                </div>
+
+                <div class="form-box" style="grid-column:1 / -1;">
+                  <label for="diagnosis">5. การวินิจฉัยโรคแรกรับ</label>
+                  <select id="diagnosis" class="form-select">
+                    <option value="">-- เลือกการวินิจฉัย --</option>
+                    <option value="Schizophrenia">Schizophrenia</option>
+                    <option value="Schizophrenia Paranoid">Schizophrenia Paranoid</option>
+                    <option value="Substance Induce Psychosis">Substance Induce Psychosis</option>
+                    <option value="Alcohol">Alcohol</option>
+                    <option value="Acute Psychosis">Acute Psychosis</option>
+                    <option value="Depressive">Depressive</option>
+                    <option value="Adjustment">Adjustment</option>
+                    <option value="Bipolar">Bipolar</option>
+                    <option value="Suicidal Attempt">Suicidal Attempt</option>
+                    <option value="Psychotic Disorder">Psychotic Disorder</option>
+                    <option value="Amphetamine Induce Psychosis">Amphetamine Induce Psychosis</option>
+                    <option value="อื่นๆ">อื่นๆ</option>
+                  </select>
+                  <input type="text" id="diagnosisOther" class="form-input hidden" style="margin-top:8px;" placeholder="ระบุการวินิจฉัยอื่นๆ">
+                </div>
+
+                <div class="form-box" style="grid-column:1 / -1;">
+                  <label for="admissionSource">6. รับ Admit</label>
+                  <select id="admissionSource" class="form-select">
+                    <option value="">-- เลือกวิธีการรับผู้ป่วย --</option>
+                    <option value="รับจาก ER">รับจาก ER</option>
+                    <option value="รับจาก OPD">รับจาก OPD</option>
+                    <option value="รับย้าย">รับย้าย</option>
+                    <option value="Refer Fasttrack">Refer Fasttrack</option>
+                  </select>
+                  <div id="admissionDateSection" class="hidden" style="margin-top:8px;">
+                    <label for="admissionDateDisplay">วันที่เข้ารับการรักษา</label>
+                    <div style="position:relative;">
+                      <!-- date input is placed as a transparent overlay so native picker anchors to the visible field -->
+                      <input type="date" id="admissionDate" class="form-input" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; z-index:2;" aria-hidden="false">
+                      <!-- visible BE display (read-only) shown beneath the transparent date input -->
+                      <input type="text" id="admissionDateDisplay" class="form-input" placeholder="วว/ดด/ปปปป (พ.ศ.)" readonly style="position:relative; z-index:1;">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-box" style="grid-column:1 / -1; margin-top:6px;">
+                  <label for="admittingDoctor">7. นายแพทย์ผู้รับ</label>
+                  <select id="admittingDoctor" class="form-select">
+                    <option value="">-- เลือกแพทย์ผู้รับ --</option>
+                    <option value="พญ. บุญพร้อม เชษฐรตานนท์">พญ. บุญพร้อม เชษฐรตานนท์</option>
+                    <option value="พญ. ปฏิมาภรณ์ ผลบุณยรักษ์">พญ. ปฏิมาภรณ์ ผลบุณยรักษ์</option>
+                    <option value="พญ. อารียา สมบูรณ์เกื้อ">พญ. อารียา สมบูรณ์เกื้อ</option>
+                    <option value="นพ. แสนพล บุญชัย">นพ. แสนพล บุญชัย</option>
+                    <option value="พญ. หทัยภัทร วิทยศักดิ์พันธุ์">พญ. หทัยภัทร วิทยศักดิ์พันธุ์</option>
+                    <option value="พญ. อนัญญา ชัยวัฒนพงศ์">พญ. อนัญญา ชัยวัฒนพงศ์</option>
+                    <option value="นพ.พูร์ ชีวะสุทโธ">นพ.พูร์ ชีวะสุทโธ</option>
+                  </select>
+                </div>
+
+              </div>
+
+              <div id="page5Error" class="hidden" style="color:#b91c1c;margin-top:12px;"></div>
+              <div style="margin-top:16px;display:flex;gap:12px;">
+                <button id="sv_backFrom5Btn" class="btn" style="background:#94a3b8;">ย้อนกลับ</button>
+                <button id="sv_submitAllBtn" class="btn">บันทึกข้อมูล</button>
+              </div>
+            </div>
+
+            <div id="sv_result" class="hidden" style="margin-top:12px;"></div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Old patient lookup (backup table) -->
+      <div id="page-oldPatient" class="hidden">
+        <div class="max-w-2xl mx-auto p-6">
+          <div class="card">
+            <h2 class="heading-font">ค้นหาข้อมูลผู้ป่วย (สำรอง)</h2>
+
+            <div style="margin-top:12px;">
+              <label for="oldpatient-hn-search">ค้นหา (HN)</label>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <input id="oldpatient-hn-search" type="text" class="form-input" placeholder="กรอกรหัส HN">
+                <button id="oldpatient-search-btn" class="btn">ค้นหา</button>
+              </div>
+            </div>
+
+            <div id="oldpatient-patient-info" class="result-card hidden" style="margin-top:12px;">
+              <div class="backup-info">
+                <div class="backup-row"><div class="backup-label">HN</div><div class="backup-value" id="oldpatient-patient-hn"></div></div>
+                <div class="backup-row"><div class="backup-label">ชื่อ - นามสกุล</div><div class="backup-value" id="oldpatient-full_name"></div></div>
+                <div class="backup-row"><div class="backup-label">อายุ</div><div class="backup-value" id="oldpatient-age"></div></div>
+                <div class="backup-row"><div class="backup-label">เพศ</div><div class="backup-value" id="oldpatient-gender"></div></div>
+                <div class="backup-row"><div class="backup-label">ผู้ดูแล</div><div class="backup-value" id="oldpatient-caregiver-name"></div></div>
+                <div class="backup-row"><div class="backup-label">ความสัมพันธ์</div><div class="backup-value" id="oldpatient-caregiver-relation"></div></div>
+                <div class="backup-row"><div class="backup-label">เบอร์โทร</div><div class="backup-value" id="oldpatient-caregiver-phone"></div></div>
+                <div class="backup-row"><div class="backup-label">ที่อยู่</div><div class="backup-value" id="oldpatient-residence-details"></div></div>
+                <div class="backup-row small-muted"><div class="backup-label">วันที่รับ (admit_date)</div><div class="backup-value" id="oldpatient-patient-admit"></div></div>
+              </div>
+            </div>
+
+            <!-- Backup history filters -->
+            <div style="margin-top:12px;" id="backup-filters">
+              <label>กรองประวัติ</label>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <select id="dropdown_month" class="form-select" style="width:140px;"></select>
+                <select id="dropdown_year" class="form-select" style="width:140px;"></select>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;">
+              <table class="assess-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>วันที่รับรักษา</th>
+                    <th>วันที่จำหน่าย</th>
+                    <th style="text-align:left">การวินิจฉัยล่าสุด</th>
+                  </tr>
+                </thead>
+                <tbody id="backupHistoryTableBody"></tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit existing patient page -->
+      <div id="page-editPatient" class="hidden">
+        <div class="max-w-2xl mx-auto p-6">
+          <div class="card">
+            <h2 class="heading-font">แก้ไขข้อมูลผู้ป่วย</h2>
+
+            <div style="margin-top:12px;">
+              <label for="editpatient-hn-search">ค้นหา (HN)</label>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <input id="editpatient-hn-search" type="text" class="form-input" placeholder="กรอกรหัส HN">
+                <button id="editpatient-search-btn" class="btn">ค้นหา</button>
+              </div>
+            </div>
+
+            <form id="editpatient-form" class="form-section hidden" style="margin-top:12px;" onsubmit="return false;">
+              <div class="form-box" style="grid-column:1 / -1;">
+                <label for="edit-hn">HN</label>
+                <input id="edit-hn" type="text" class="form-input" readonly>
+              </div>
+
+              <div class="form-box">
+                <label for="edit-prefix">คำนำหน้า</label>
+                <input id="edit-prefix" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-first_name">ชื่อ</label>
+                <input id="edit-first_name" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-last_name">นามสกุล</label>
+                <input id="edit-last_name" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-full_name">ชื่อ-นามสกุล (เต็ม)</label>
+                <input id="edit-full_name" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-gender">เพศ</label>
+                <select id="edit-gender" class="form-select">
+                  <option value="">-- เลือกเพศ --</option>
+                  <option value="หญิง">เพศหญิง</option>
+                  <option value="ชาย">เพศชาย</option>
+                </select>
+              </div>
+
+              <div class="form-box">
+                <label for="edit-age">อายุ</label>
+                <input id="edit-age" type="number" min="0" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-is_smi_v">Is SMI‑V</label>
+                <input id="edit-is_smi_v" type="checkbox" class="form-input" style="width:auto;">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-diagnosis">Diagnosis</label>
+                <input id="edit-diagnosis" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-smi_v_result">SMI‑V Result</label>
+                <input id="edit-smi_v_result" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-smi_type">ประเภทผู้ป่วย (smi_type)</label>
+                <input id="edit-smi_type" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-substance_use">Substance use</label>
+                <input id="edit-substance_use" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-substance_type">Substance type</label>
+                <input id="edit-substance_type" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-patient_phone">เบอร์โทรผู้ป่วย</label>
+                <input id="edit-patient_phone" type="tel" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-admission_date">วันที่รับ (ISO)</label>
+                <input id="edit-admission_date" type="date" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-admitting_doctor">แพทย์เจ้าของไข้</label>
+                <input id="edit-admitting_doctor" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-caregiver_name">ชื่อผู้ดูแล</label>
+                <input id="edit-caregiver_name" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-caregiver_relation">ความสัมพันธ์ผู้ดูแล</label>
+                <input id="edit-caregiver_relation" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-caregiver_phone">เบอร์โทรผู้ดูแล</label>
+                <input id="edit-caregiver_phone" type="tel" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-admission_source">Admission source</label>
+                <input id="edit-admission_source" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-residence_type">Residence type</label>
+                <input id="edit-residence_type" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-residence_details">Residence details</label>
+                <input id="edit-residence_details" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-residence_district">Residence district</label>
+                <input id="edit-residence_district" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-residence_subdistrict">Residence subdistrict</label>
+                <input id="edit-residence_subdistrict" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-aggressive_behavior">Aggressive behaviour</label>
+                <input id="edit-aggressive_behavior" type="text" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-oas_score">OAS Score</label>
+                <input id="edit-oas_score" type="number" min="0" class="form-input">
+              </div>
+
+              <div class="form-box">
+                <label for="edit-oas_risk_level">OAS Risk Level</label>
+                <input id="edit-oas_risk_level" type="text" class="form-input">
+              </div>
+
+              <div style="grid-column:1 / -1; display:flex; gap:12px; margin-top:8px;">
+                <button id="editpatient-save-btn" class="btn">บันทึกการแก้ไข</button>
+                <button type="button" id="editpatient-cancel-btn" class="btn" style="background:#94a3b8;">ยกเลิก</button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      </div>
+      
+        <!-- ทะเบียนจำหน่ายผู้ป่วย (Discharge registry) -->
+        <div id="page-smiv" class="hidden">
+          <div class="max-w-2xl mx-auto p-6">
+          <div class="card" id="smiv-register-card">
+            <h2 class="heading-font">ทะเบียนจำหน่ายผู้ป่วย</h2>
+
+            <div style="margin-top:12px;">
+              <label for="discharge-hn-search">ค้นหา (HN)</label>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <input id="discharge-hn-search" type="text" class="form-input" placeholder="กรอกรหัส HN">
+                <button id="discharge-search-btn" class="btn">ค้นหา</button>
+              </div>
+            </div>
+
+            <div id="discharge-patient-info" class="result-card hidden" style="margin-top:12px;">
+              <div><strong>ชื่อ-นามสกุล:</strong> <span id="discharge-patient-name"></span></div>
+              <div><strong>วันที่รับ (admit_date):</strong> <span id="discharge-patient-admit"></span></div>
+              <div><strong>อายุ:</strong> <span id="discharge-patient-age"></span></div>
+              <div><strong>SMI-V:</strong> <span id="discharge-patient-smiv"></span></div>
+              <div><strong>แพทย์เจ้าของไข้:</strong> <span id="discharge-patient-doctor"></span></div>
+            </div>
+
+            <div id="discharge-form" class="form-section hidden" style="margin-top:12px;">
+              <div class="form-box">
+                <label for="discharge-method">วิธีการจำหน่าย</label>
+                <select id="discharge-method" class="form-select">
+                  <option value="">-- เลือกวิธีการจำหน่าย --</option>
+                  <option value="แพทย์อนุญาต">แพทย์อนุญาต</option>
+                  <option value="ปฏิเสธการรักษา">ปฏิเสธการรักษา</option>
+                  <option value="refer back">refer back</option>
+                  <option value="transfer">transfer</option>
+                </select>
+                <input type="text" id="TransferOther" class="form-input hidden" style="margin-top:8px;" placeholder="อื่นๆ">
+              </div>
+
+              <div class="form-box">
+                <label for="discharge-date">จำหน่ายวันที่</label>
+                <div style="position:relative;">
+                  <input id="discharge-date" type="date" class="form-input" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; z-index:2;" />
+                  <input id="dischargeDateDisplay" type="text" class="form-input" placeholder="วว/ดด/ปปปป (พ.ศ.)" readonly tabindex="-1" style="position:relative; z-index:1;" />
+                </div>
+              </div>
+
+              <div class="form-box" style="grid-column:1 / -1;">
+                <label for="discharge-last-dx">Last diagnosis</label>
+                <input id="discharge-last-dx" type="text" class="form-input" placeholder="ระบุ diagnosis สุดท้าย">
+              </div>
+
+              <div class="form-box" style="grid-column:1 / -1;">
+                <label>การเยี่ยมบ้าน</label>
+                <div style="display:flex; gap:12px; margin-top:8px;">
+                  <label class="radio-card"><input type="radio" name="discharge-type" value="อนุญาตเยี่ยมบ้าน">อนุญาตเยี่ยมบ้าน</label>
+                  <label class="radio-card"><input type="radio" name="discharge-type" value="ไม่อนุญาตเยี่ยมบ้าน">ไม่อนุญาตเยี่ยมบ้าน</label>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;">
+              <button id="discharge-save-btn" class="btn hidden">บันทึกการจำหน่าย</button>
+            </div>
+
+            <div id="discharge-msg" class="hidden" style="margin-top:12px;"></div>
+          </div>
+          </div>
+        </div>
+
+      <!-- Assessment page -->
+      <div id="page-assessment" class="hidden">
+        <div class="max-w-2xl mx-auto p-6">
+          <div class="card">
+            <h2 class="heading-font">ประเมินผู้ป่วยรายเวร</h2>
+
+            <div style="display:flex; gap:12px; margin-top:16px; margin-bottom:16px;">
+              <button id="btn-male-list" class="btn" style="flex:1; background:#2563eb;">ผู้ป่วยเพศชาย</button>
+              <button id="btn-female-list" class="btn" style="flex:1; background:#ec4899;">ผู้ป่วยเพศหญิง</button>
+            </div>
+
+            <div id="patient-list-area" style="margin-top:12px; max-height:300px; overflow-y:auto; display:none; border:1px solid #e2e8f0; border-radius:8px; padding:10px; background:#f8fafc; margin-bottom:16px;"></div>
+
+            <div id="patient-info-card" class="result-card" style="margin-top:16px; display:none; background:#f1f5f9; padding:16px; border-radius:8px; border-left:4px solid #4f46e5;"></div>
+
+            <form id="assess-form" class="form-section" style="margin-top:16px; display:none;" onsubmit="return false;">
+              <div class="form-box">
+                <label>วันที่ประเมิน</label>
+                <input id="a-date" type="date" class="form-input">
+              </div>
+              <div class="form-box">
+                <label>เวร</label>
+                <select id="a-shift" class="form-select">
+                  <option value="">-- เลือก --</option>
+                  <option>เวรดึก</option><option>เวรเช้า</option><option>เวรบ่าย</option>
+                </select>
+              </div>
+
+              <div style="grid-column: 1 / -1;">
+                <fieldset class="form-box">
+                  <legend class="heading-font">OAS Score</legend>
+                  <div class="score-btn" style="margin-top:8px;">
+                    <input type="radio" name="oas" id="oas0" value="0"><label for="oas0">0</label>
+                    <input type="radio" name="oas" id="oas1" value="1"><label for="oas1">1</label>
+                    <input type="radio" name="oas" id="oas2" value="2"><label for="oas2">2</label>
+                    <input type="radio" name="oas" id="oas3" value="3"><label for="oas3">3</label>
+                  </div>
+                </fieldset>
+              </div>
+
+              <div class="form-box" style="grid-column:1 / -1;">
+                <fieldset style="border-radius:12px;padding:12px;">
+                  <legend class="heading-font">PHUA</legend>
+                  <div id="phua-items" style="margin-top:8px;"></div>
+                  <div id="phua-result" class="result-card" style="display:none;margin-top:8px;"></div>
+                </fieldset>
+              </div>
+
+              <div class="form-box" style="grid-column:1 / -1;">
+                <fieldset style="border-radius:12px;padding:12px;">
+                  <legend class="heading-font">G-HARD</legend>
+                  <div id="ghard-items" style="margin-top:8px;"></div>
+                  <div id="ghard-result" class="result-card" style="display:none;margin-top:8px;"></div>
+                </fieldset>
+              </div>
+
+              <div style="grid-column:1 / -1; margin-top:8px;">
+                <button id="assess-btn" class="btn">บันทึกผลประเมิน</button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      </div>
+      
+      <!-- IOR page -->
+      <div id="page-ior" class="hidden">
+        <div class="max-w-2xl mx-auto p-6">
+          <div class="card">
+            <h2 class="heading-font">บันทึก IOR</h2>
+
+            <!-- ค้นหาผู้ป่วย -->
+            <div style="display:flex; gap:10px; margin-top:16px;">
+              <input id="ior-hn" type="text" class="form-input" placeholder="กรอกรหัส HN" style="width:100%;">
+              <button id="ior-search-btn" class="btn" type="button" style="white-space:nowrap;">ค้นหา</button>
+            </div>
+            <div id="ior-patient-info" style="display:none; margin-top:12px; padding:12px; background:#f1f5f9; border-radius:8px; border-left:4px solid #4f46e5;">
+              <div id="ior-patient-name" style="font-weight:600; font-size:16px;"></div>
+            </div>
+
+            <!-- ฟอร์มบันทึก IOR -->
+            <div id="ior-form-section" style="display:none; margin-top:20px;">
+              
+              <!-- 2.1 วันที่บันทึก -->
+              <div class="form-box" style="margin-bottom:14px;">
+                <label>วันที่บันทึก</label>
+                <div style="position:relative;">
+                  <input id="ior-date-raw" type="date" class="form-input"
+                    style="position:absolute; inset:0; width:100%; height:100%; opacity:0; z-index:2;" />
+                  <input id="ior-date-display" type="text" class="form-input"
+                    placeholder="วว/ดด/ปปปป (พ.ศ.)" readonly tabindex="-1"
+                    style="position:relative; z-index:1;" />
+                </div>
+              </div>
+
+              <!-- 2.2 พฤติกรรมรุนแรง -->
+              <div class="form-box" style="margin-bottom:14px;">
+                <label style="display:block; margin-bottom:8px; font-weight:600;">พฤติกรรมรุนแรง</label>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="ior-behavior" value="ทะเลาะวิวาท/อาละวาดทำร้ายผู้ป่วยอื่น/สิ่งของ"
+                      style="margin-top:3px; width:16px; height:16px; flex-shrink:0;">
+                    <span>ทะเลาะวิวาท/อาละวาดทำร้ายผู้ป่วยอื่น/สิ่งของ</span>
+                  </label>
+                  <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="ior-behavior" value="ทะเลาะวิวาท/อาละวาดทำร้ายเจ้าหน้าที่"
+                      style="margin-top:3px; width:16px; height:16px; flex-shrink:0;">
+                    <span>ทะเลาะวิวาท/อาละวาดทำร้ายเจ้าหน้าที่</span>
+                  </label>
+                  <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="ior-behavior" value="หงุดหงิดก้าวร้าวไม่ทำร้ายใคร"
+                      style="margin-top:3px; width:16px; height:16px; flex-shrink:0;">
+                    <span>หงุดหงิดก้าวร้าวไม่ทำร้ายใคร</span>
+                  </label>
+                  <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+                    <input type="checkbox" name="ior-behavior" value="ทำร้ายตนเอง"
+                      style="margin-top:3px; width:16px; height:16px; flex-shrink:0;">
+                    <span>ทำร้ายตนเอง</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- 2.3 Level -->
+              <div class="form-box" style="margin-bottom:20px;">
+                <label style="display:block; margin-bottom:8px; font-weight:600;">Level</label>
+                <div class="score-btn">
+                  <input type="radio" name="ior-level" id="ior-lvl-b" value="B"><label for="ior-lvl-b">B</label>
+                  <input type="radio" name="ior-level" id="ior-lvl-c" value="C"><label for="ior-lvl-c">C</label>
+                  <input type="radio" name="ior-level" id="ior-lvl-d" value="D"><label for="ior-lvl-d">D</label>
+                  <input type="radio" name="ior-level" id="ior-lvl-e" value="E"><label for="ior-lvl-e">E</label>
+                  <input type="radio" name="ior-level" id="ior-lvl-f" value="F"><label for="ior-lvl-f">F</label>
+                  <input type="radio" name="ior-level" id="ior-lvl-g" value="G"><label for="ior-lvl-g">G</label>
+                  <input type="radio" name="ior-level" id="ior-lvl-h" value="H"><label for="ior-lvl-h">H</label>
+                  <input type="radio" name="ior-level" id="ior-lvl-i" value="I"><label for="ior-lvl-i">I</label>
+                </div>
+              </div>
+
+              <button id="ior-save-btn" class="btn" type="button">บันทึกข้อมูล</button>
+              <div id="ior-msg" style="display:none; margin-top:12px;"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+            <!-- IPD ชาย page -->
+      <div id="page-ipdMale" class="hidden">
+        <div class="max-w-2xl mx-auto p-6">
+          <div class="card">
+            <h2 class="heading-font">IPD ชาย</h2>
+            <div style="display:flex; gap:12px; margin-top:16px; margin-bottom:16px;">
+              <button id="ipd-male-btn-nonsmiv" class="btn" style="flex:1; background:#6366f1;" onclick="loadIpdList('male','nonsmiv')">Non SMIV</button>
+              <button id="ipd-male-btn-smiv" class="btn" style="flex:1; background:#94a3b8;" onclick="loadIpdList('male','smiv')">SMIV</button>
+            </div>
+            <div id="ipd-male-list" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IPD หญิง page -->
+      <div id="page-ipdFemale" class="hidden">
+        <div class="max-w-2xl mx-auto p-6">
+          <div class="card">
+            <h2 class="heading-font">IPD หญิง</h2>
+            <div style="display:flex; gap:12px; margin-top:16px; margin-bottom:16px;">
+              <button id="ipd-female-btn-nonsmiv" class="btn" style="flex:1; background:#6366f1;" onclick="loadIpdList('female','nonsmiv')">Non SMIV</button>
+              <button id="ipd-female-btn-smiv" class="btn" style="flex:1; background:#94a3b8;" onclick="loadIpdList('female','smiv')">SMIV</button>
+            </div>
+            <div id="ipd-female-list" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- สถิติผู้ป่วยรับใหม่ชาย -->
+      <div id="page-male-admission" class="page hidden" style="padding:24px;">
+        <h2 style="margin-bottom:16px;">สถิติผู้ป่วยรับใหม่หอผู้ป่วยจิตเวชชาย</h2>
+
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; align-items:flex-end;">
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">เดือน</label>
+            <select id="male-adm-month" onchange="filterAdmission('male')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option>
+              <option value="3">มีนาคม</option><option value="4">เมษายน</option>
+              <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+              <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+              <option value="9">กันยายน</option><option value="10">ตุลาคม</option>
+              <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ปี (พ.ศ.)</label>
+            <select id="male-adm-year" onchange="filterAdmission('male')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ประเภทผู้ป่วย (SMI-V)</label>
+            <select id="male-adm-smiv" onchange="filterAdmission('male')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="SMI-V 1">SMI-V 1</option>
+              <option value="SMI-V 2">SMI-V 2</option>
+              <option value="SMI-V 3">SMI-V 3</option>
+              <option value="SMI-V 4">SMI-V 4</option>
+              <option value="ไม่เข้าข่าย SMI-V">ไม่เข้าข่าย SMI-V</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ที่อยู่</label>
+            <select id="male-adm-residence" onchange="filterAdmission('male')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="นอกเขตอำเภอเมืองชลบุรี">นอกเขตอำเภอเมืองชลบุรี</option>
+              <option value="ในเขตอำเภอเมืองชลบุรี">ในเขตอำเภอเมืองชลบุรี</option>
+              <option value="นอกจังหวัด">นอกจังหวัด</option>
+              <option value="เร่ร่อน">เร่ร่อน/อยู่สถานสงเคราะห์</option>
+            </select>
+          </div>
+          <button onclick="exportAdmissionExcel('male')"
+            style="padding:6px 16px; background:#217346; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;">
+            ⬇ ดาวน์โหลด Excel
+          </button>
+        </div>
+
+        <div id="male-adm-summary" style="margin-bottom:10px; font-weight:bold; font-size:15px;"></div>
+
+        <div style="overflow-x:auto;">
+          <table id="male-adm-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#4a90d9; color:#fff;">
+                <th style="padding:8px; border:1px solid #ccc;">Admit</th>
+                <th style="padding:8px; border:1px solid #ccc;">HN</th>
+                <th style="padding:8px; border:1px solid #ccc;">ชื่อ-นามสกุล</th>
+                <th style="padding:8px; border:1px solid #ccc;">Dx.แรกรับ</th>
+                <th style="padding:8px; border:1px solid #ccc;">SMIV</th>
+                <th style="padding:8px; border:1px solid #ccc;">การใช้สารเสพติด</th>
+                <th style="padding:8px; border:1px solid #ccc;">แพทย์ที่รับผิดชอบ</th>
+                <th style="padding:8px; border:1px solid #ccc;">ที่อยู่</th>
+              </tr>
+            </thead>
+            <tbody id="male-adm-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- สถิติผู้ป่วยรับใหม่หญิง -->
+      <div id="page-female-admission" class="page hidden" style="padding:24px;">
+        <h2 style="margin-bottom:16px;">สถิติผู้ป่วยรับใหม่หอผู้ป่วยจิตเวชหญิง</h2>
+
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; align-items:flex-end;">
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">เดือน</label>
+            <select id="female-adm-month" onchange="filterAdmission('female')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option>
+              <option value="3">มีนาคม</option><option value="4">เมษายน</option>
+              <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+              <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+              <option value="9">กันยายน</option><option value="10">ตุลาคม</option>
+              <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ปี (พ.ศ.)</label>
+            <select id="female-adm-year" onchange="filterAdmission('female')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ประเภทผู้ป่วย (SMI-V)</label>
+            <select id="female-adm-smiv" onchange="filterAdmission('female')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="SMI-V 1">SMI-V 1</option>
+              <option value="SMI-V 2">SMI-V 2</option>
+              <option value="SMI-V 3">SMI-V 3</option>
+              <option value="SMI-V 4">SMI-V 4</option>
+              <option value="ไม่เข้าข่าย SMI-V">ไม่เข้าข่าย SMI-V</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ที่อยู่</label>
+            <select id="female-adm-residence" onchange="filterAdmission('female')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="นอกเขตอำเภอเมืองชลบุรี">นอกเขตอำเภอเมืองชลบุรี</option>
+              <option value="ในเขตอำเภอเมืองชลบุรี">ในเขตอำเภอเมืองชลบุรี</option>
+              <option value="นอกจังหวัด">นอกจังหวัด</option>
+              <option value="เร่ร่อน">เร่ร่อน/อยู่สถานสงเคราะห์</option>
+            </select>
+          </div>
+          <button onclick="exportAdmissionExcel('female')"
+            style="padding:6px 16px; background:#217346; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;">
+            ⬇ ดาวน์โหลด Excel
+          </button>
+        </div>
+
+        <div id="female-adm-summary" style="margin-bottom:10px; font-weight:bold; font-size:15px;"></div>
+
+        <div style="overflow-x:auto;">
+          <table id="female-adm-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#e87c7c; color:#fff;">
+                <th style="padding:8px; border:1px solid #ccc;">Admit</th>
+                <th style="padding:8px; border:1px solid #ccc;">HN</th>
+                <th style="padding:8px; border:1px solid #ccc;">ชื่อ-นามสกุล</th>
+                <th style="padding:8px; border:1px solid #ccc;">Dx.แรกรับ</th>
+                <th style="padding:8px; border:1px solid #ccc;">SMIV</th>
+                <th style="padding:8px; border:1px solid #ccc;">การใช้สารเสพติด</th>
+                <th style="padding:8px; border:1px solid #ccc;">แพทย์ที่รับผิดชอบ</th>
+                <th style="padding:8px; border:1px solid #ccc;">ที่อยู่</th>
+              </tr>
+            </thead>
+            <tbody id="female-adm-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- สถิติผู้ป่วยจำหน่ายชาย -->
+      <div id="page-male-discharge" class="page hidden" style="padding:24px;">
+        <h2 style="margin-bottom:16px;">สถิติผู้ป่วยจำหน่ายหอผู้ป่วยจิตเวชชาย</h2>
+
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; align-items:flex-end;">
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">เดือน</label>
+            <select id="male-dis-month" onchange="filterDischarge('male')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option>
+              <option value="3">มีนาคม</option><option value="4">เมษายน</option>
+              <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+              <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+              <option value="9">กันยายน</option><option value="10">ตุลาคม</option>
+              <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ปี (พ.ศ.)</label>
+            <select id="male-dis-year" onchange="filterDischarge('male')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ประเภทผู้ป่วย (SMI-V)</label>
+            <select id="male-dis-smiv" onchange="filterDischarge('male')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="SMI-V 1">SMI-V 1</option>
+              <option value="SMI-V 2">SMI-V 2</option>
+              <option value="SMI-V 3">SMI-V 3</option>
+              <option value="SMI-V 4">SMI-V 4</option>
+              <option value="ไม่เข้าข่าย SMI-V">ไม่เข้าข่าย SMI-V</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ที่อยู่</label>
+            <select id="male-dis-residence" onchange="filterDischarge('male')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="นอกเขตอำเภอเมืองชลบุรี">นอกเขตอำเภอเมืองชลบุรี</option>
+              <option value="ในเขตอำเภอเมืองชลบุรี">ในเขตอำเภอเมืองชลบุรี</option>
+              <option value="นอกจังหวัด">นอกจังหวัด</option>
+              <option value="เร่ร่อน">เร่ร่อน/อยู่สถานสงเคราะห์</option>
+            </select>
+          </div>
+          <button onclick="exportDischargeExcel('male')"
+            style="padding:6px 16px; background:#217346; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;">
+            ⬇ ดาวน์โหลด Excel
+          </button>
+        </div>
+
+        <div id="male-dis-summary" style="margin-bottom:10px; font-weight:bold; font-size:15px;"></div>
+
+        <div style="overflow-x:auto;">
+          <table id="male-dis-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#4a90d9; color:#fff;">
+                <th style="padding:8px; border:1px solid #ccc;">วันที่จำหน่าย</th>
+                <th style="padding:8px; border:1px solid #ccc;">HN</th>
+                <th style="padding:8px; border:1px solid #ccc;">ชื่อ-นามสกุล</th>
+                <th style="padding:8px; border:1px solid #ccc;">Last Dx.</th>
+                <th style="padding:8px; border:1px solid #ccc;">SMIV</th>
+                <th style="padding:8px; border:1px solid #ccc;">การใช้สารเสพติด</th>
+                <th style="padding:8px; border:1px solid #ccc;">แพทย์ที่รับผิดชอบ</th>
+                <th style="padding:8px; border:1px solid #ccc;">ข้อมูลการเยี่ยม</th>
+                <th style="padding:8px; border:1px solid #ccc;">ที่อยู่</th>
+              </tr>
+            </thead>
+            <tbody id="male-dis-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- สถิติผู้ป่วยจำหน่ายหญิง -->
+      <div id="page-female-discharge" class="page hidden" style="padding:24px;">
+        <h2 style="margin-bottom:16px;">สถิติผู้ป่วยจำหน่ายหอผู้ป่วยจิตเวชหญิง</h2>
+
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; align-items:flex-end;">
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">เดือน</label>
+            <select id="female-dis-month" onchange="filterDischarge('female')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option>
+              <option value="3">มีนาคม</option><option value="4">เมษายน</option>
+              <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+              <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+              <option value="9">กันยายน</option><option value="10">ตุลาคม</option>
+              <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ปี (พ.ศ.)</label>
+            <select id="female-dis-year" onchange="filterDischarge('female')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ประเภทผู้ป่วย (SMI-V)</label>
+            <select id="female-dis-smiv" onchange="filterDischarge('female')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="SMI-V 1">SMI-V 1</option>
+              <option value="SMI-V 2">SMI-V 2</option>
+              <option value="SMI-V 3">SMI-V 3</option>
+              <option value="SMI-V 4">SMI-V 4</option>
+              <option value="ไม่เข้าข่าย SMI-V">ไม่เข้าข่าย SMI-V</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ที่อยู่</label>
+            <select id="female-dis-residence" onchange="filterDischarge('female')" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="นอกเขตอำเภอเมืองชลบุรี">นอกเขตอำเภอเมืองชลบุรี</option>
+              <option value="ในเขตอำเภอเมืองชลบุรี">ในเขตอำเภอเมืองชลบุรี</option>
+              <option value="นอกจังหวัด">นอกจังหวัด</option>
+              <option value="เร่ร่อน">เร่ร่อน/อยู่สถานสงเคราะห์</option>
+            </select>
+          </div>
+          <button onclick="exportDischargeExcel('female')"
+            style="padding:6px 16px; background:#217346; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;">
+            ⬇ ดาวน์โหลด Excel
+          </button>
+        </div>
+
+        <div id="female-dis-summary" style="margin-bottom:10px; font-weight:bold; font-size:15px;"></div>
+
+        <div style="overflow-x:auto;">
+          <table id="female-dis-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#e87c7c; color:#fff;">
+                <th style="padding:8px; border:1px solid #ccc;">วันที่จำหน่าย</th>
+                <th style="padding:8px; border:1px solid #ccc;">HN</th>
+                <th style="padding:8px; border:1px solid #ccc;">ชื่อ-นามสกุล</th>
+                <th style="padding:8px; border:1px solid #ccc;">Last Dx.</th>
+                <th style="padding:8px; border:1px solid #ccc;">SMIV</th>
+                <th style="padding:8px; border:1px solid #ccc;">การใช้สารเสพติด</th>
+                <th style="padding:8px; border:1px solid #ccc;">แพทย์ที่รับผิดชอบ</th>
+                <th style="padding:8px; border:1px solid #ccc;">ข้อมูลการเยี่ยม</th>
+                <th style="padding:8px; border:1px solid #ccc;">ที่อยู่</th>
+              </tr>
+            </thead>
+            <tbody id="female-dis-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- สถิติผู้ป่วยอุบัติการณ์ IOR : SMI-V -->
+      <div id="page-incident-statistics" class="page hidden" style="padding:24px;">
+        <h2 style="margin-bottom:16px;">IOR : SMI-V</h2>
+
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; align-items:flex-end;">
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">เดือน</label>
+            <select id="ior-stat-month" onchange="filterIncidentStatistics()" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option>
+              <option value="3">มีนาคม</option><option value="4">เมษายน</option>
+              <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+              <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+              <option value="9">กันยายน</option><option value="10">ตุลาคม</option>
+              <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">ปี (พ.ศ.)</label>
+            <select id="ior-stat-year" onchange="filterIncidentStatistics()" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; margin-bottom:4px;">หอผู้ป่วย</label>
+            <select id="ior-stat-gender" onchange="filterIncidentStatistics()" style="padding:6px 10px; border:1px solid #ccc; border-radius:6px;">
+              <option value="">ทั้งหมด</option>
+              <option value="ชาย">ชาย</option>
+              <option value="หญิง">หญิง</option>
+            </select>
+          </div>
+          <button onclick="exportIncidentExcel()"
+            style="padding:6px 16px; background:#217346; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px;">
+            ⬇ ดาวน์โหลด Excel
+          </button>
+        </div>
+
+        <div id="ior-stat-summary" style="margin-bottom:10px; font-weight:bold; font-size:15px;"></div>
+
+        <div style="overflow-x:auto;">
+          <table id="ior-stat-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#d97706; color:#fff;">
+                <th style="padding:8px; border:1px solid #ccc;">HN</th>
+                <th style="padding:8px; border:1px solid #ccc;">ชื่อ-สกุล</th>
+                <th style="padding:8px; border:1px solid #ccc;">SMIV type</th>
+                <th style="padding:8px; border:1px solid #ccc; text-align: center;">Level</th>
+              </tr>
+            </thead>
+            <tbody id="ior-stat-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Result area (used for showing outcome messages) -->
+      <div id="page-result" class="hidden max-w-2xl mx-auto p-6"></div>
+
+    </div>
+  </div>
+<div id="registerModal" class="modal-overlay hidden">
+    <div class="modal-card card">
+      <h2 class="heading-font" style="text-align: center; color: #4f46e5; margin-bottom: 20px;">สมัครสมาชิก</h2>
+      <form id="userRegForm">
+        <div class="form-box" style="display: flex; flex-direction: column; gap: 12px; background: white; border: none; padding: 0;">
+          
+          <div>
+            <label>คำนำหน้าชื่อ</label>
+            <select id="regUserPrefix" class="form-select">
+              <option value="">-- เลือกคำนำหน้า --</option>
+              <option value="นพ.">นพ.</option>
+              <option value="พญ.">พญ.</option>
+              <option value="พว.">พว.</option>
+              <option value="นาย">นาย</option>
+              <option value="นาง">นาง</option>
+              <option value="นางสาว">นางสาว</option>
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+              <label>ชื่อ</label>
+              <input type="text" id="regUserFirstName" class="form-input" placeholder="ชื่อ">
+            </div>
+            <div>
+              <label>นามสกุล</label>
+              <input type="text" id="regUserLastName" class="form-input" placeholder="นามสกุล">
+            </div>
+          </div>
+
+          <div>
+            <label>Username</label>
+            <input type="text" id="regUserUsername" class="form-input" placeholder="ใส่รหัส Ephis">
+          </div>
+
+          <div>
+            <label>Password</label>
+            <input type="password" id="regUserPassword" class="form-input" placeholder="รหัสผ่าน">
+          </div>
+
+          <div>
+            <label>ยืนยัน Password</label>
+            <input type="password" id="regUserConfirmPassword" class="form-input" placeholder="ยืนยันรหัสผ่าน">
+          </div>
+
+        </div>
+
+        <div id="regUserError" class="hidden" style="color:#b91c1c; margin-top:12px; text-align: center;"></div>
+        
+        <div style="margin-top:20px; display:flex; gap:12px;">
+          <button type="button" id="closeRegModalBtn" class="btn" style="background:#94a3b8;">ยกเลิก</button>
+          <button type="button" id="submitRegUserBtn" class="btn">ยืนยันสมัครสมาชิก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- JS -->
+  <script src="script.js" defer></script>
+
+</body>
+</html>

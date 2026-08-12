@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -23,11 +23,7 @@ export async function middleware(request: NextRequest) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
+          request.cookies.set({ name, value, ...options });
           response.cookies.set(name, value, options);
         });
       },
@@ -37,7 +33,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   const isAuthRoute = request.nextUrl.pathname === "/login";
 
   if (!user && !isAuthRoute) {
@@ -48,7 +43,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && isAuthRoute) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/";
+    redirectUrl.pathname = "/dashboard";
     return NextResponse.redirect(redirectUrl);
   }
 

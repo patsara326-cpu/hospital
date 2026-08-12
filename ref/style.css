@@ -1,0 +1,1080 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Override global font and softer background inspired by SMI-V.html */
+body {
+  background: linear-gradient(135deg, #e8f4fd 0%, #fef9e7 50%, #e8f4fd 100%);
+  min-height: 100vh;
+  font-family: 'Sarabun', 'Kanit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Login Page */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.login-box {
+  background: white;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.login-box h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #4f46e5;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #333;
+  font-weight: 600;
+}
+
+.input-group input,
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+}
+
+.form-textarea {
+  height: 120px;
+  resize: vertical;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.25s;
+  background: linear-gradient(135deg, #5ba3d9, #7ec8e3);
+  box-shadow: 0 8px 18px rgba(79,70,229,0.06);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.register-link {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.register-link a {
+  color: #4f46e5;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Main App */
+.app-container {
+  display: none;
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+/* Modern Navbar Styling */
+.navbar {
+  background: rgba(49, 46, 129, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0 40px;
+  height: 70px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; 
+  align-items: center;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.navbar h2 {
+  justify-self: start;
+  font-family: 'Kanit', sans-serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  cursor: pointer;
+}
+
+.nav-menu {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  height: 100%;
+  justify-self: center;
+}
+
+.nav-item {
+  position: relative;
+  cursor: pointer;
+  padding: 8px 16px;
+  font-family: 'Sarabun', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  height: 45px;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #60a5fa;
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.nav-item:hover::after {
+  width: 60%;
+}
+
+.nav-item .dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #ffffff;
+  color: #1e293b;
+  min-width: 220px;
+  border-radius: 12px;
+  overflow: visible;
+  display: none;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  animation: dropdownSlide 0.2s ease-out;
+}
+
+@keyframes dropdownSlide {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.nav-item .dropdown div {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  margin-bottom: 2px;
+}
+
+.nav-item .dropdown div:last-child {
+  margin-bottom: 0;
+}
+
+.nav-item .dropdown div:hover {
+  background: #f1f5f9;
+  color: #4f46e5;
+  transform: translateX(5px);
+}
+
+.nav-item:hover .dropdown {
+  display: block;
+}
+
+#userArea {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+#userMenuContainer {
+  position: relative;
+  display: inline-block;
+}
+
+#userMenuBtn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  padding: 8px 16px !important;
+  border-radius: 100px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: white !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+#userMenuBtn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+#userDropdown {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  left: auto !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  min-width: 240px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  padding: 12px !important;
+  z-index: 9999 !important;
+  display: none;
+}
+
+#userDropdown.show {
+  display: block !important;
+  animation: dropdownFadeSlide 0.2s ease-out !important;
+}
+
+@keyframes dropdownFadeSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#dd-username {
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  color: #64748b !important;
+  text-align: left;
+}
+
+#dd-name {
+  padding: 2px 8px 12px 8px !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  color: #1e293b !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  text-align: left;
+}
+
+.dd-logout-container {
+  padding-top: 10px !important;
+}
+
+.content {
+  padding: 40px;
+}
+
+.card {
+  position: relative;
+  background: #ffffff;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(59,130,246,0.08);
+}
+
+.card h2 {
+  color: #312e81;
+  margin-bottom: 15px;
+}
+
+/* Doctor card */
+.doctor-card {
+  background: linear-gradient(180deg, rgba(203,153,255,0.08), rgba(236,72,153,0.03));
+  padding: 14px;
+  border-radius: 12px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.doctor-card h3 { margin: 0; color: #6b21a8; }
+
+.btn-arrow { opacity: 0.5; background: transparent; border: none; width:44px; height:44px; padding:0; font-size:20px; display:inline-flex; align-items:center; justify-content:center; }
+
+.dashboard-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.88);
+  color: #1f2937;
+  box-shadow: 0 8px 20px rgba(15,23,42,0.06);
+  opacity: 0.75;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  z-index: 50;
+}
+.dashboard-arrow:hover { transform: translateY(-50%) scale(1.04); opacity: 1; }
+.dashboard-arrow.left { left: -18px; }
+.dashboard-arrow.right { right: -18px; }
+
+.doctor-card .doc-total { font-size: 36px; font-weight: 700; background: #fff; padding: 12px; border-radius: 12px; text-align: center; }
+.doctor-card .doc-stats { display:flex; gap:8px; margin-top:10px; }
+.doctor-card .doc-stats .stat { flex:1; background:#fff; padding:8px; border-radius:8px; text-align:center; }
+
+.logout-btn {
+  background: #ef4444;
+  border: none;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.logout-btn:hover { background: #dc2626; }
+
+#registerModal .card { max-width: 480px; }
+#registerModal .form-input, #registerModal .form-select { width:100%; }
+
+.form-section {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-box {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 15px;
+  border: 1px solid #ddd;
+}
+
+.radio-card {
+  display: block;
+  border: 1px solid #e6eef9;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  background: #fff;
+}
+.radio-card input[type="radio"] { margin-right: 10px; }
+.radio-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(15,23,42,0.06); }
+.radio-card.selected { border-color: rgba(79,70,229,0.6); background: linear-gradient(90deg, rgba(79,70,229,0.04), rgba(124,58,237,0.03)); }
+
+/* OAS table (sv_page3) */
+.oas-table-wrap { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+.oas-table { width: 100%; border-collapse: collapse; font-size: 0.9rem;}
+.oas-table th, .oas-table td { border: 1px solid #e2e8f0; padding: 12px; vertical-align: top; text-align: left; }
+.oas-table thead th { background: #f8fafc; font-weight: 600; color: #334155; }
+.oas-row { cursor: pointer; transition: background 0.15s ease, box-shadow 0.15s ease; }
+.oas-row:hover { background: #f8fafc; }
+.oas-row.selected { background: linear-gradient(90deg, rgba(79,70,229,0.06), rgba(124,58,237,0.04)); box-shadow: inset 0 0 0 2px rgba(79,70,229,0.55); }
+.oas-row-label { display: flex; align-items: flex-start; gap: 8px; margin: 0; cursor: pointer; }
+.oas-radio-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 768px) {
+  .oas-table { font-size: 0.8rem;}
+  .oas-table th, .oas-table td { padding: 8px; }
+}
+
+.small-muted { color: #6b7280; font-size: 14px; }
+.medium-muted { color: #312e81; font-size: 18px; font-weight: 600; }
+.smiv-card h2 { color: #312e81; margin-bottom: 8px; }
+.heading-font { font-family: 'Kanit', 'Segoe UI', Tahoma, sans-serif; }
+
+.app-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.app-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.score-btn { display: flex; gap: 8px; }
+.score-btn input[type="radio"] { display: none; }
+.score-btn label { flex: 1; text-align: center; padding: 10px 8px; border-radius: 10px; border: 1px solid #d1d5db; cursor: pointer; font-weight: 600; }
+.score-btn label:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(15,23,42,0.04); }
+.score-btn input[type="radio"]:checked + label { background: linear-gradient(90deg, rgba(79,70,229,0.06), rgba(124,58,237,0.03)); border-color: #4f46e5; color: #1f2937; transform: scale(1.02); }
+
+.assess-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.assess-table th, .assess-table td { padding: 8px; border-bottom: 1px solid #e6e9ee; text-align: center; }
+.assess-table th { background: #f8fafc; font-weight: 700; color: #374151; text-align: center; }
+.assess-items td:first-child { text-align: left; font-weight: 600; }
+
+.result-card { margin-top: 12px; padding: 12px; border-radius: 12px; background: #f8fafc; border: 1px solid #e6eef9; }
+.backup-info { display: grid; grid-template-columns: 1fr 2fr; gap: 8px 16px; align-items: start; }
+.backup-row { display: contents; }
+.backup-label { font-weight: 700; color: #334155; }
+.backup-value { color: #1f2937; }
+.backup-info .backup-row:nth-child(odd) .backup-value { color: #374151; }
+.backup-info .backup-row { padding: 6px 0; border-bottom: 1px dashed rgba(15,23,42,0.04); }
+.backup-info .backup-row:last-child { border-bottom: none; }
+.hidden { display: none !important; }
+.max-w-2xl { max-width: 672px; margin-left:auto; margin-right:auto; padding: 24px; }
+.rounded-2xl { border-radius: 16px; }
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+.modal-overlay.hidden { display: none !important; }
+
+.modal-card {
+  background: white;
+  width: 90%;
+  max-width: 500px;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─────────────────────────────────────────────
+   Desktop-only: ซ่อน hamburger บน PC
+───────────────────────────────────────────── */
+.hamburger-icon {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE — Mobile-First  (Tailwind v4 · Modern Minimal)
+   Hospital App  |  iOS & Android optimised
+   ─────────────────────────────────────────────────────────
+   Breakpoints
+     sm  : 390px   (iPhone SE / small Android)
+     md  : 480px   (most phones landscape / large phones)
+     lg  : 768px   (tablet portrait — desktop layout kicks in)
+═══════════════════════════════════════════════════════════ */
+
+/* ── SMALL phones (≤ 390px) ─────────────────────────────── */
+@media (max-width: 390px) {
+  .navbar h2 {
+    font-size: 0.95rem !important;
+    letter-spacing: 0 !important;
+  }
+
+  .card,
+  .login-box,
+  #smiv-register-card,
+  #sv-form {
+    padding: 14px !important;
+  }
+
+  .score-btn label {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+
+  .modal-card {
+    padding: 20px 16px !important;
+  }
+}
+
+/* Dropdown ระดับ 2 — วางนอก @media */
+.dropdown-sub {
+  position: relative;
+  padding: 10px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dropdown-sub:hover {
+  background: #f1f5f9;
+}
+
+.dropdown-sub-menu {
+  display: none !important;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 120px;
+  z-index: 1100;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.dropdown-sub:hover > .dropdown-sub-menu {
+  display: block !important;
+  pointer-events: auto;
+}
+
+.dropdown-sub-menu > div {
+  padding: 10px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #1e293b;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+.dropdown-sub-menu > div:hover {
+  background: #f1f5f9;
+  color: #4f46e5;
+}
+
+/* ── MAIN MOBILE BREAKPOINT (≤ 768px) ───────────────────── */
+@media (max-width: 768px) {
+
+  /* ── 0. Global safe-area & base ────────────────────────── */
+  body {
+    padding: 0 !important;
+    /* iOS safe-area support */
+    padding-left: env(safe-area-inset-left) !important;
+    padding-right: env(safe-area-inset-right) !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* ── 1. Layout containers ───────────────────────────────── */
+  .content {
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .max-w-2xl {
+    max-width: 100% !important;
+    padding: 0 16px !important;
+    margin: 0 !important;
+  }
+
+  .card,
+  .login-box,
+  #smiv-register-card,
+  #sv-form {
+    padding: 20px 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 16px !important;
+    /* Subtle depth — keeps cards crisp on white bg */
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06),
+                0 4px 16px rgba(15, 23, 42, 0.04) !important;
+  }
+
+  /* ── 2. Navbar ──────────────────────────────────────────── */
+  .navbar {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    /* Taller tap target on mobile */
+    height: 60px !important;
+    padding: 0 16px !important;
+    /* Extend under status bar on notched phones */
+    padding-top: env(safe-area-inset-top) !important;
+    height: calc(60px + env(safe-area-inset-top)) !important;
+  }
+
+  .navbar h2 {
+    font-size: 1.05rem !important;
+    margin-left: 10px !important;
+    margin-right: auto !important;
+    /* Slightly softer — hospital calm */
+    opacity: 0.92 !important;
+  }
+
+  #userArea {
+    margin-left: auto !important;
+  }
+
+  /* ── 3. Hamburger icon ──────────────────────────────────── */
+  .hamburger-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 22px !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    cursor: pointer !important;
+    z-index: 1001 !important;
+    user-select: none;
+    border-radius: 10px !important;
+    /* Gentle press feedback */
+    transition: background 0.15s ease !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .hamburger-icon:active {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  /* ── 4. Side-drawer nav ─────────────────────────────────── */
+  .nav-menu {
+    position: fixed !important;
+    top: 0 !important;
+    left: -100% !important;
+    right: auto !important;
+    width: min(280px, 80vw) !important;
+    height: 100dvh !important;           /* dynamic viewport height — iOS Safari fix */
+    /* Deep indigo — hospital trust palette */
+    background: #1e1b4b !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    padding: calc(72px + env(safe-area-inset-top)) 16px
+             calc(32px + env(safe-area-inset-bottom)) 16px !important;
+    gap: 6px !important;
+    transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1000 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25) !important;
+    display: flex !important;
+  }
+
+  /* Slide in */
+  #menu-click-toggle:checked ~ .nav-menu {
+    left: 0 !important;
+  }
+
+  /* Scrim overlay — class-based (CSS sibling selector broken: checkbox inside .navbar) */
+  body.mobile-menu-open .menu-scrim {
+    display: block !important;
+  }
+  .menu-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 999;
+    animation: scrimFadeIn 0.22s ease-out;
+  }
+  body.mobile-menu-open {
+    overflow: hidden !important;
+  }
+
+  @keyframes scrimFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ✕ close button */
+  #menu-click-toggle:checked ~ .hamburger-icon {
+    font-size: 0 !important;
+    position: fixed !important;
+    left: calc(min(280px, 80vw) - 48px) !important;
+    top: calc(12px + env(safe-area-inset-top)) !important;
+    right: auto !important;
+    z-index: 1002 !important;
+  }
+
+  #menu-click-toggle:checked ~ .hamburger-icon::before {
+    content: "✕" !important;
+    font-size: 20px !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+  }
+
+  /* ── 5. Nav items inside drawer ─────────────────────────── */
+  .nav-item {
+    width: 100% !important;
+    height: auto !important;
+    position: static !important;
+    min-height: 48px !important;         /* WCAG touch target */
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 12px 14px !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    /* Subtle divider */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    transition: background 0.15s ease !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nav-item:active {
+    background: rgba(96, 165, 250, 0.12) !important;
+  }
+
+  .nav-item::after {
+    display: none !important;
+  }
+
+  /* Dropdown always expanded inside drawer */
+  .nav-item .dropdown {
+    position: static !important;
+    display: none !important;
+    width: 100% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin-top: 4px !important;
+    padding: 0 !important;
+    animation: none !important;
+    border-radius: 0 !important;
+  }
+
+  .nav-item.dropdown-open > .dropdown {
+    display: block !important;
+  }
+
+  .nav-item .dropdown > div {
+    color: rgba(203, 213, 225, 0.85) !important;
+    padding: 10px 12px 10px 16px !important;
+    font-size: 14px !important;
+    border-radius: 8px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    border-bottom: none !important;
+    transform: none !important;
+    transition: background 0.12s ease, color 0.12s ease !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nav-item .dropdown > div:active {
+    background: rgba(56, 189, 248, 0.1) !important;
+    color: #38bdf8 !important;
+  }
+
+  /* ยกเลิก hover จาก desktop ที่ค้างบนมือถือ */
+  .nav-item .dropdown div:hover {
+    background: transparent !important;
+    color: rgba(203, 213, 225, 0.85) !important;
+    transform: none !important;
+  }
+
+  .dropdown-sub:hover {
+    background: transparent !important;
+  }
+
+  .dropdown-sub-menu > div:hover {
+    background: transparent !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+  }
+
+  /* dropdown-sub: แยกเป็นคอลัมน์ ไม่ให้ text กับ sub-menu นั่งข้างกัน */
+  .nav-item .dropdown .dropdown-sub {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 6px 12px 6px 16px !important;
+    min-height: 44px !important;
+    white-space: normal !important;
+    color: rgba(203, 213, 225, 0.85) !important;
+    font-size: 14px !important;
+    border-radius: 8px !important;
+    border-bottom: none !important;
+    transition: background 0.12s ease, color 0.12s ease !important;
+    -webkit-tap-highlight-color: transparent;
+    position: static !important;
+    z-index: auto !important;
+  }
+
+  .nav-item .dropdown .dropdown-sub:active {
+    background: rgba(56, 189, 248, 0.1) !important;
+    color: #38bdf8 !important;
+  }
+
+  /* dropdown-sub-menu: จาก absolute → static ไม่ให้ลอยทับ */
+  .nav-item .dropdown .dropdown-sub-menu {
+    display: none !important;
+    position: static !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 0 0 16px !important;
+    pointer-events: auto !important;
+    overflow: visible !important;
+    z-index: auto !important;
+    margin: 0 !important;
+  }
+
+  .dropdown-sub.sub-open > .dropdown-sub-menu {
+    display: block !important;
+  }
+
+  .nav-item .dropdown .dropdown-sub-menu > div {
+    display: flex !important;
+    align-items: center !important;
+    padding: 8px 12px 8px 16px !important;
+    min-height: 40px !important;
+    font-size: 13px !important;
+    color: rgba(148, 163, 184, 0.85) !important;
+    border-radius: 8px !important;
+    transition: background 0.12s ease, color 0.12s ease !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nav-item .dropdown .dropdown-sub-menu > div:active {
+    background: rgba(56, 189, 248, 0.1) !important;
+    color: #38bdf8 !important;
+  }
+
+  .nav-item .dropdown div:active {
+    background: rgba(56, 189, 248, 0.1) !important;
+    color: #38bdf8 !important;
+  }
+
+
+  /* ── 6. Dashboard grid ──────────────────────────────────── */
+  .dashboard-arrow.left  { left: 4px !important; }
+  .dashboard-arrow.right { right: 4px !important; }
+
+  #dashboard-top > div[style*="display:flex"],
+  #dashboard-top > div[style*="display: flex"] {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  #dashboard-top > div[style*="display:flex"] > div,
+  #dashboard-top > div[style*="display: flex"] > div {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  #dashboard-bottom {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  #dashboard-bottom > div {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  #dashboard-2-grid,
+  #dashboard-3-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* ── 7. Forms ───────────────────────────────────────────── */
+  .form-section,
+  div[style*="display:flex"]:has(input),
+  div[style*="display: flex"]:has(input),
+  div[style*="display: grid"],
+  div[style*="display:grid"] {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  /* iOS auto-zoom prevention: font-size must be ≥ 16px */
+  .form-input,
+  .form-select,
+  .form-textarea,
+  input,
+  select,
+  textarea {
+    width: 100% !important;
+    font-size: 16px !important;
+    /* Comfortable tap padding */
+    padding: 12px 14px !important;
+    border-radius: 10px !important;
+    /* Remove iOS inner shadow */
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Action button rows — stack vertically */
+  div[style*="margin-top:20px; display:flex; gap:12px;"],
+  div[style*="margin-top: 20px; display: flex; gap: 12px;"] {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  div[style*="margin-top:20px; display:flex; gap:12px;"] button,
+  div[style*="margin-top: 20px; display: flex; gap: 12px;"] button {
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 13px !important;
+    margin: 0 !important;
+    font-size: 16px !important;
+  }
+
+  /* ── 8. Buttons — comfortable touch targets ─────────────── */
+  .btn {
+    min-height: 48px !important;
+    padding: 13px 20px !important;
+    font-size: 16px !important;
+    /* Prevent double-tap zoom on iOS */
+    touch-action: manipulation;
+  }
+
+  /* ── 9. Doctor stats — keep side-by-side ───────────────── */
+  .doc-stats {
+    flex-direction: row !important;
+    gap: 8px !important;
+  }
+
+  .doc-stats .stat {
+    flex: 1 !important;
+    padding: 8px 6px !important;
+    font-size: 13px !important;
+  }
+
+  /* ── 10. Assessment table — card-mode ───────────────────── */
+  .assess-table thead {
+    display: none !important;
+  }
+
+  .assess-table tr {
+    display: block !important;
+    margin-bottom: 10px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 10px 12px !important;
+    background: #fff !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04) !important;
+  }
+
+  .assess-table td {
+    display: block !important;
+    text-align: left !important;
+    border: none !important;
+    padding: 5px 2px !important;
+    font-size: 14px !important;
+  }
+
+  /* ── 11. Score buttons ──────────────────────────────────── */
+  .score-btn {
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .score-btn label {
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    touch-action: manipulation;
+    font-size: 13px !important;
+  }
+
+  /* ── 12. Modal ──────────────────────────────────────────── */
+  .modal-card {
+    width: 94% !important;
+    padding: 24px 18px !important;
+    border-radius: 20px !important;
+    /* Slide up from bottom — native mobile feel */
+    animation: modalSlideUp 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) !important;
+    margin-bottom: env(safe-area-inset-bottom) !important;
+  }
+
+  @keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(32px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ── 13. Login box ──────────────────────────────────────── */
+  .login-box {
+    padding: 28px 20px !important;
+    border-radius: 20px !important;
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.1) !important;
+  }
+
+  /* ── 14. Toast notification ─────────────────────────────── */
+  .app-toast {
+    width: calc(100% - 32px) !important;
+    left: 16px !important;
+    right: 16px !important;
+    transform: none !important;
+    top: calc(16px + env(safe-area-inset-top)) !important;
+    font-size: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .app-toast.show {
+    transform: none !important;
+  }
+
+  /* ── 15. SMI-V card ─────────────────────────────────────── */
+  .smiv-card {
+    padding: 16px !important;
+    border-radius: 14px !important;
+  }
+
+  /* ── 16. Backup info grid ───────────────────────────────── */
+  .backup-info {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .backup-label {
+    font-size: 12px !important;
+    color: #64748b !important;
+    margin-bottom: 1px !important;
+  }
+
+  .backup-value {
+    font-size: 14px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+  }
+
+  /* ── 17. User dropdown ──────────────────────────────────── */
+  #userDropdown {
+    right: 8px !important;
+    min-width: 220px !important;
+    border-radius: 14px !important;
+  }
+
+  #userMenuBtn {
+    padding: 7px 12px !important;
+    font-size: 13px !important;
+  }
+}
+

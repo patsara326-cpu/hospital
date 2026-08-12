@@ -1,159 +1,109 @@
-"use client";
+import { notFound } from "next/navigation";
 
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import AdmissionStatistics, {
+  type AdmissionStatisticRow,
+} from "@/components/statistics/AdmissionStatistics";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-type AdmissionRow = {
-  hn: string;
-  full_name: string | null;
-  smi_type: string | null;
-  admit_date: string | null;
-  admitting_doctor: string | null;
-  raw_data?: Record<string, unknown> | null;
+type PageProps = {
+  params: Promise<{ gender: string }>;
 };
 
-function extractDiagnosis(rawData?: Record<string, unknown> | null) {
-  if (!rawData || typeof rawData !== "object") {
-    return null;
-  }
+const GENDER_CONFIG = {
+  male: { label: "ชาย", title: "สถิติผู้ป่วยรับใหม่หอผู้ป่วยจิตเวชชาย" },
+  female: { label: "หญิง", title: "สถิติผู้ป่วยรับใหม่หอผู้ป่วยจิตเวชหญิง" },
+} as const;
 
-  const candidate =
-    rawData.diagnosis ?? rawData.last_diagnosis ?? rawData.final_diagnosis;
-
-  return typeof candidate === "string" ? candidate : null;
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
-function normalizeGenderValues(rawGender?: string) {
-  const key = (rawGender ?? "male").toLowerCase();
-
-  if (key === "female" || key === "หญิง") {
-    return ["หญิง", "female"];
-  }
-
-  return ["ชาย", "male"];
+function textValue(value: unknown): string | null {
+  return typeof value === "string" || typeof value === "number"
+    ? String(value)
+    : null;
 }
 
-export default function AdmissionStatisticsPage() {
-  const params = useParams<{ gender?: string }>();
-  const genderValues = useMemo(
-    () => normalizeGenderValues(params?.gender),
-    [params?.gender],
-  );
-  const gender = genderValues[0];
-  const [rows, setRows] = useState<AdmissionRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default async function AdmissionStatisticsPage({
+  params,
+}: PageProps) {
+  const { gender } = await params;
+  const config = GENDER_CONFIG[gender as keyof typeof GENDER_CONFIG];
 
-  useEffect(() => {
-    async function load() {
-      const supabase = createSupabaseBrowserClient();
-      if (!supabase) {
-        setError("ยังไม่ได้ตั้งค่า Supabase environment variables");
-        setLoading(false);
-        return;
-      }
+  if (!config) {
+    notFound();
+  }
 
-      const { data, error: queryError } = await supabase
-        .from("patients")
-        .select(
-          "hn, full_name, smi_type, admit_date, admitting_doctor, gender, raw_data",
-        )
-        .in("gender", genderValues)
-        .order("admit_date", { ascending: false });
+  const supabase = await createSupabaseServerClient();
+  let rows: AdmissionStatisticRow[] = [];
+  let error: string | null = null;
 
-      if (queryError) {
-        setError(queryError.message);
-        setRows([]);
-      } else {
-        setRows((data as AdmissionRow[]) ?? []);
-      }
+  if (!supabase) {
+    error = "ยังไม่ได้ตั้งค่า Supabase environment variables";
+  } else {
+    const [{ data: assessmentData, error: assessmentError }, { data: backupData, error: backupError }] =
+      await Promise.all([
+        supabase
+          .from("assessments")
+          .select("raw_data")
+          .not("raw_data", "is", null),
+        supabase
+          .from("backup")
+          .select("id, raw_data")
+          .not("raw_data", "is", null),
+      ]);
 
-      setLoading(false);
+    if (assessmentError || backupError) {
+      error = assessmentError?.message ?? backupError?.message ?? "ไม่สามารถโหลดข้อมูลได้";
     }
 
-    void load();
-  }, [genderValues]);
+    const assessmentSeen = new Set<string>();
+    const fromAssessments: AdmissionStatisticRow[] = (assessmentData ?? [])
+      .map((entry, index) => {
+        const rawData = asRecord(entry.raw_data);
+        if (!rawData) return null;
+
+        const admissionDate = textValue(rawData.admission_date ?? rawData.admit_date);
+        const hn = textValue(rawData.hn);
+        if (!admissionDate || textValue(rawData.gender) !== config.label) return null;
+
+        const key = `${hn ?? ""}_${admissionDate}`;
+        if (assessmentSeen.has(key)) return null;
+        assessmentSeen.add(key);
+
+        return {
+          id: `assessment-${index}`,
+          raw_data: rawData,
+        };
+      })
+      .filter((row): row is AdmissionStatisticRow => row !== null);
+
+    const fromBackup: AdmissionStatisticRow[] = (backupData ?? [])
+      .map((entry) => {
+        const rawData = asRecord(entry.raw_data);
+        if (!rawData) return null;
+
+        const admissionDate = textValue(rawData.admission_date ?? rawData.admit_date);
+        if (!admissionDate || textValue(rawData.gender) !== config.label) return null;
+
+        return {
+          id: `backup-${textValue(entry.id) ?? admissionDate}`,
+          raw_data: rawData,
+        };
+      })
+      .filter((row): row is AdmissionStatisticRow => row !== null);
+
+    rows = [...fromAssessments, ...fromBackup];
+  }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">
-              Statistics
-            </p>
-            <h1 className="mt-1 text-3xl font-bold text-slate-800">
-              สถิติผู้ป่วยรับใหม่หอผู้ป่วยจิตเวช{gender}
-            </h1>
-          </div>
-          <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-            {rows.length} ราย
-          </div>
-        </div>
-
-        {error ? (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
-
-        {loading ? (
-          <div className="mt-5 text-slate-600">กำลังโหลดสถิติ...</div>
-        ) : (
-          <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-slate-700">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">HN</th>
-                  <th className="px-4 py-3 font-semibold">ชื่อ-สกุล</th>
-                  <th className="px-4 py-3 font-semibold">SMI-V</th>
-                  <th className="px-4 py-3 font-semibold">วันที่รับ</th>
-                  <th className="px-4 py-3 font-semibold">แพทย์</th>
-                  <th className="px-4 py-3 font-semibold">วินิจฉัย</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {rows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-6 text-center text-slate-500"
-                    >
-                      ไม่มีข้อมูลสถิติ
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((row) => (
-                    <tr key={row.hn} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-medium text-slate-800">
-                        {row.hn}
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {row.full_name || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {row.smi_type || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {row.admit_date
-                          ? new Date(row.admit_date).toLocaleDateString("th-TH")
-                          : "-"}
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {row.admitting_doctor || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {extractDiagnosis(row.raw_data) || "-"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </div>
+    <AdmissionStatistics
+      genderLabel={config.label}
+      title={config.title}
+      initialRows={rows}
+      error={error}
+    />
   );
 }

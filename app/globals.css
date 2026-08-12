@@ -19,7 +19,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Sarabun", "Kanit", "Segoe UI", sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 }
 
 html {
@@ -60,6 +61,10 @@ main {
     -webkit-backdrop-filter: blur(12px);
   }
 
+  .legacy-navbar-inner {
+    min-height: 64px;
+  }
+
   .legacy-brand {
     @apply bg-gradient-to-r from-white to-slate-300 bg-clip-text text-xl font-semibold tracking-[0.08em] text-transparent;
     font-family: "Kanit", "Sarabun", sans-serif;
@@ -68,6 +73,10 @@ main {
   .legacy-nav {
     @apply flex items-center gap-2;
     flex-wrap: wrap;
+  }
+
+  .legacy-nav-group {
+    position: relative;
   }
 
   .legacy-nav-item {
@@ -87,6 +96,10 @@ main {
     background: #60a5fa;
     transform: translateX(-50%);
     transition: width 0.2s ease;
+  }
+
+  .legacy-nav-trigger {
+    border: 0;
   }
 
   .legacy-nav-item:hover::after {
@@ -137,6 +150,36 @@ main {
     @apply block rounded-lg px-3 py-2 text-sm text-slate-700 transition-all duration-150 hover:bg-slate-100 hover:text-indigo-600 hover:translate-x-1;
   }
 
+  .legacy-dropdown-wide {
+    min-width: 240px;
+  }
+
+  .legacy-subgroup {
+    position: relative;
+  }
+
+  .legacy-subgroup-trigger {
+    @apply flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 hover:text-indigo-600;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .legacy-submenu {
+    @apply invisible pointer-events-none absolute left-full top-0 ml-1 min-w-[150px] rounded-xl border border-slate-200 bg-white p-2 opacity-0 shadow-xl transition-all duration-200;
+  }
+
+  .legacy-subgroup:hover > .legacy-submenu,
+  .legacy-subgroup:focus-within > .legacy-submenu,
+  .legacy-subgroup.legacy-subgroup-open > .legacy-submenu {
+    @apply visible pointer-events-auto opacity-100;
+  }
+
+  .legacy-menu-toggle,
+  .legacy-menu-scrim {
+    display: none;
+  }
+
   .legacy-stat-card {
     @apply rounded-[18px] border border-slate-200 p-5 shadow-sm;
   }
@@ -168,6 +211,100 @@ main {
 
   .legacy-mini-stat {
     @apply flex-1 rounded-[10px] bg-white p-2 text-center shadow-sm;
+  }
+}
+
+@media (max-width: 767px) {
+  .legacy-navbar-inner {
+    min-height: 60px;
+  }
+
+  .legacy-menu-toggle {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-2xl text-white/90 transition hover:bg-white/10;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .legacy-nav {
+    @apply fixed left-0 top-0 z-[70] h-dvh w-[min(300px,85vw)] flex-col items-stretch gap-2 overflow-y-auto bg-indigo-950 px-4 pb-8 pt-20 shadow-2xl transition-transform duration-300;
+    flex-wrap: nowrap;
+    transform: translateX(-105%);
+  }
+
+  .legacy-nav.legacy-nav-open {
+    transform: translateX(0);
+  }
+
+  .legacy-nav-item,
+  .legacy-nav-trigger {
+    @apply min-h-12 w-full justify-between rounded-xl px-4 py-3 text-left text-base text-white/90;
+  }
+
+  .legacy-nav-item::after {
+    display: none;
+  }
+
+  .legacy-nav-group {
+    width: 100%;
+  }
+
+  .legacy-dropdown,
+  .legacy-dropdown-wide {
+    position: static;
+    display: none;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0;
+    padding: 0 0 0 0.5rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    animation: none;
+  }
+
+  .legacy-nav-group.legacy-group-open > .legacy-dropdown {
+    display: block;
+  }
+
+  .legacy-dropdown-item,
+  .legacy-subgroup-trigger {
+    @apply min-h-11 rounded-lg px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white;
+  }
+
+  .legacy-subgroup {
+    width: 100%;
+  }
+
+  .legacy-submenu {
+    position: static;
+    display: none;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 0 0.75rem;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .legacy-subgroup.legacy-subgroup-open > .legacy-submenu {
+    display: block;
+  }
+
+  .legacy-menu-scrim {
+    @apply fixed inset-0 z-[60] block cursor-default bg-slate-950/50 backdrop-blur-[2px];
+    border: 0;
+  }
+
+  .legacy-user-badge {
+    @apply max-w-[10rem] truncate px-3 py-2 text-xs;
   }
 }
 

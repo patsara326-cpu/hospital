@@ -1,304 +1,151 @@
-"use client";
+import DashboardCarousel, {
+  type DashboardData,
+  type DashboardPatientRow,
+  type DashboardDoctor,
+} from "@/components/dashboard/DashboardCarousel";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useEffect, useMemo, useState } from "react";
+const NON_SMIV_VALUE = "ไม่เข้าข่าย SMI-V";
+const GENDERS = ["ชาย", "หญิง"] as const;
 
-type DashboardSummary = {
-  total: number;
-  general: number;
-  smiv: number;
-  maleTotal: number;
-  maleGeneral: number;
-  maleSmiv: number;
-  femaleTotal: number;
-  femaleGeneral: number;
-  femaleSmiv: number;
-};
-
-type DoctorSummary = {
-  id: string;
-  name: string;
-  total: number;
-  general: number;
-  smiv: number;
-};
-
-const DASH_DOCTORS = [
+const DOCTORS: DashboardDoctor[] = [
   { id: "anya", name: "พญ. อนัญญา ชัยวัฒนพงศ์" },
   { id: "hattayaphat", name: "พญ. หทัยภัทร วิทยศักดิ์พันธุ์" },
   { id: "saenphon", name: "นพ. แสนพล บุญชัย" },
   { id: "areeya", name: "พญ. อารียา สมบูรณ์เกื้อ" },
   { id: "patimakorn", name: "พญ. ปฏิมาภรณ์ ผลบุณยรักษ์" },
   { id: "boonprom", name: "พญ. บุญพร้อม เชษฐรตานนท์" },
+  { id: "poorchiva", name: "นพ.พูร์ ชีวะสุทโธ", match: "พูร์" },
 ];
 
-async function getCount(filters: Record<string, string> = {}) {
-  const supabase = createSupabaseBrowserClient();
+function countBy(
+  rows: DashboardPatientRow[],
+  predicate: (row: DashboardPatientRow) => boolean,
+) {
+  return rows.reduce((count, row) => count + (predicate(row) ? 1 : 0), 0);
+}
 
+function isGeneral(row: DashboardPatientRow) {
+  return row.smi_type === NON_SMIV_VALUE;
+}
+
+function isSmiv(row: DashboardPatientRow) {
+  return row.smi_type !== null && row.smi_type !== NON_SMIV_VALUE;
+}
+
+function hasOasScore(row: DashboardPatientRow, score: number) {
+  return row.oas_score !== null && Number(row.oas_score) === score;
+}
+
+function doctorCount(
+  rows: DashboardPatientRow[],
+  doctor: DashboardDoctor,
+  predicate: (row: DashboardPatientRow) => boolean,
+) {
+  const target = doctor.match ?? doctor.name;
+  const exactCount = countBy(
+    rows,
+    (row) => row.admitting_doctor === target && predicate(row),
+  );
+
+  // Preserve the legacy matching order: exact, then ilike variants, then last name.
+  if (exactCount > 0) {
+    return exactCount;
+  }
+
+  const stripped = target.replace(/แพทย์|Dr\.?/gi, "").trim();
+  const patterns = [target, stripped].filter(Boolean);
+  for (const pattern of patterns) {
+    const matched = countBy(rows, (row) =>
+      Boolean(row.admitting_doctor?.toLocaleLowerCase("th-TH").includes(pattern.toLocaleLowerCase("th-TH"))) &&
+      predicate(row),
+    );
+    if (matched > 0) return matched;
+  }
+
+  const parts = target.split(/\s+/).filter(Boolean);
+  const last = parts.at(-1);
+  if (!last) return 0;
+
+  return countBy(
+    rows,
+    (row) =>
+      Boolean(row.admitting_doctor?.toLocaleLowerCase("th-TH").includes(last.toLocaleLowerCase("th-TH"))) &&
+      predicate(row),
+  );
+}
+
+async function loadDashboardData(): Promise<DashboardData> {
+  const supabase = await createSupabaseServerClient();
   if (!supabase) {
-    return 0;
+    return emptyDashboardData();
   }
 
-  let query = supabase
+  const { data, error } = await supabase
     .from("patients")
-    .select("*", { count: "exact", head: true });
+    .select("gender, smi_type, oas_score, admitting_doctor");
 
-  if (filters.gender) {
-    query = query.eq("gender", filters.gender);
-  }
-
-  if (filters.smi_eq) {
-    query = query.eq("smi_type", filters.smi_eq);
-  }
-
-  if (filters.smi_neq) {
-    query = query.neq("smi_type", filters.smi_neq);
-  }
-
-  if (filters.doctor) {
-    const exact = await query.eq("admitting_doctor", filters.doctor);
-    if (!exact.error && (exact.count ?? 0) > 0) {
-      return exact.count ?? 0;
-    }
-
-    const stripped = filters.doctor.replace(/แพทย์|Dr\.?/g, "").trim();
-    const patterns = [filters.doctor, stripped]
-      .filter(Boolean)
-      .map((value) => `%${value}%`);
-
-    for (const pattern of patterns) {
-      const match = await supabase
-        .from("patients")
-        .select("*", { count: "exact", head: true })
-        .ilike("admitting_doctor", pattern);
-
-      if (!match.error && (match.count ?? 0) > 0) {
-        return match.count ?? 0;
-      }
-    }
-
-    const parts = filters.doctor.split(/\s+/).filter(Boolean);
-    if (parts.length > 0) {
-      const last = parts[parts.length - 1];
-      const fallback = await supabase
-        .from("patients")
-        .select("*", { count: "exact", head: true })
-        .ilike("admitting_doctor", `%${last}%`);
-
-      if (!fallback.error && (fallback.count ?? 0) > 0) {
-        return fallback.count ?? 0;
-      }
-    }
-
-    return 0;
-  }
-
-  const { count, error } = await query;
   if (error) {
-    console.error("Dashboard count query failed", error);
-    return 0;
+    console.error("Dashboard patient summary query failed", error);
+    return emptyDashboardData();
   }
 
-  return count ?? 0;
+  const rows = (data ?? []) as DashboardPatientRow[];
+  const genderRows = GENDERS.map((gender) => {
+    const filterGender = (row: DashboardPatientRow) => row.gender === gender;
+    return {
+      gender,
+      total: countBy(rows, filterGender),
+      general: countBy(rows, (row) => filterGender(row) && isGeneral(row)),
+      smiv: countBy(rows, (row) => filterGender(row) && isSmiv(row)),
+      smivTypes: [0, 1, 2, 3].map((score) =>
+        countBy(rows, (row) => filterGender(row) && hasOasScore(row, score)),
+      ),
+    };
+  });
+
+  const doctors = DOCTORS.map((doctor) => ({
+    ...doctor,
+    total: doctor.match
+      ? doctorCount(rows, doctor, (row) => isGeneral(row) || isSmiv(row))
+      : doctorCount(rows, doctor, () => true),
+    general: doctorCount(rows, doctor, isGeneral),
+    smiv: doctorCount(rows, doctor, isSmiv),
+  }));
+
+  return {
+    total: rows.length,
+    general: countBy(rows, isGeneral),
+    smiv: countBy(rows, isSmiv),
+    wards: genderRows,
+    doctors,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
-function formatThaiDate(date: Date) {
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
-}
-
-export default function HomePage() {
-  const [activeView, setActiveView] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<DashboardSummary>({
+function emptyDashboardData(): DashboardData {
+  return {
     total: 0,
     general: 0,
     smiv: 0,
-    maleTotal: 0,
-    maleGeneral: 0,
-    maleSmiv: 0,
-    femaleTotal: 0,
-    femaleGeneral: 0,
-    femaleSmiv: 0,
-  });
-  const [doctorSummary, setDoctorSummary] = useState<DoctorSummary[]>([]);
+    wards: GENDERS.map((gender) => ({
+      gender,
+      total: 0,
+      general: 0,
+      smiv: 0,
+      smivTypes: [0, 0, 0, 0],
+    })),
+    doctors: DOCTORS.map((doctor) => ({
+      ...doctor,
+      total: 0,
+      general: 0,
+      smiv: 0,
+    })),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveView((current) => (current + 1) % 3);
-    }, 4000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    async function loadDashboard() {
-      const results = await Promise.all([
-        getCount(),
-        getCount({ smi_eq: "ไม่เข้าข่าย SMI-V" }),
-        getCount({ smi_neq: "ไม่เข้าข่าย SMI-V" }),
-        getCount({ gender: "ชาย" }),
-        getCount({ gender: "ชาย", smi_eq: "ไม่เข้าข่าย SMI-V" }),
-        getCount({ gender: "ชาย", smi_neq: "ไม่เข้าข่าย SMI-V" }),
-        getCount({ gender: "หญิง" }),
-        getCount({ gender: "หญิง", smi_eq: "ไม่เข้าข่าย SMI-V" }),
-        getCount({ gender: "หญิง", smi_neq: "ไม่เข้าข่าย SMI-V" }),
-      ]);
-
-      const [
-        total,
-        general,
-        smiv,
-        maleTotal,
-        maleGeneral,
-        maleSmiv,
-        femaleTotal,
-        femaleGeneral,
-        femaleSmiv,
-      ] = results;
-
-      setSummary({
-        total,
-        general,
-        smiv,
-        maleTotal,
-        maleGeneral,
-        maleSmiv,
-        femaleTotal,
-        femaleGeneral,
-        femaleSmiv,
-      });
-
-      const doctorRows = await Promise.all(
-        DASH_DOCTORS.map(async (doctor) => {
-          const [totalCount, generalCount, smivCount] = await Promise.all([
-            getCount({ doctor: doctor.name }),
-            getCount({ doctor: doctor.name, smi_eq: "ไม่เข้าข่าย SMI-V" }),
-            getCount({ doctor: doctor.name, smi_neq: "ไม่เข้าข่าย SMI-V" }),
-          ]);
-
-          return {
-            id: doctor.id,
-            name: doctor.name,
-            total: totalCount,
-            general: generalCount,
-            smiv: smivCount,
-          };
-        }),
-      );
-
-      setDoctorSummary(doctorRows);
-      setLoading(false);
-    }
-
-    void loadDashboard();
-  }, []);
-
-  const cards = useMemo(
-    () => [
-      {
-        title: "ผู้ป่วยทั้งหมด",
-        value: summary.total,
-        tone: "bg-indigo-50 text-indigo-700",
-      },
-      {
-        title: "ไม่เข้าข่าย SMI-V",
-        value: summary.general,
-        tone: "bg-amber-50 text-amber-700",
-      },
-      {
-        title: "SMI-V",
-        value: summary.smiv,
-        tone: "bg-emerald-50 text-emerald-700",
-      },
-    ],
-    [summary],
-  );
-
-  const doctorCards = doctorSummary.slice(0, 3);
-
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      <section className="legacy-dashboard-card">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <span className="legacy-badge">Dashboard</span>
-            <h1 className="legacy-card-title mt-3">ภาพรวมระบบ</h1>
-          </div>
-          <div className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-            {loading ? "กำลังโหลด..." : `อัพเดต: ${formatThaiDate(new Date())}`}
-          </div>
-        </div>
-
-        <div className="legacy-grid-3 mt-6">
-          {cards.map((card, index) => (
-            <div
-              key={card.title}
-              className={`${card.tone} legacy-dashboard-stat transition-all ${
-                activeView === index ? "ring-2 ring-indigo-300" : ""
-              }`}
-            >
-              <div className="text-sm font-medium text-slate-600">
-                {card.title}
-              </div>
-              <div className="mt-3 text-4xl font-bold">{card.value}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 border-t border-slate-200 pt-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-indigo-900">
-              ยอดผู้ป่วยแยกตามแพทย์ผู้รับ
-            </h2>
-            <div className="text-sm text-slate-500">
-              {loading
-                ? "กำลังโหลดข้อมูลแพทย์..."
-                : `ผู้ป่วยรวม ${doctorSummary.reduce((sum, item) => sum + item.total, 0)} ราย`}
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {doctorCards.map((doctor) => (
-              <div key={doctor.id} className="legacy-dashboard-doctor">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-violet-700">
-                      {doctor.name.split(" ").slice(0, 2).join(" ")}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">ผู้รับผิดชอบ</p>
-                  </div>
-                  <span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-medium text-slate-600">
-                    Active
-                  </span>
-                </div>
-
-                <div className="mt-5 rounded-xl bg-white p-4 text-center text-3xl font-bold text-violet-700">
-                  {doctor.total}
-                </div>
-
-                <div className="mt-4 flex gap-2 text-center text-[11px]">
-                  <div className="legacy-mini-stat">
-                    <div className="font-bold text-slate-800">
-                      {doctor.general}
-                    </div>
-                    <div className="text-slate-500">ทั่วไป</div>
-                  </div>
-                  <div className="legacy-mini-stat">
-                    <div className="font-bold text-slate-800">
-                      {doctor.smiv}
-                    </div>
-                    <div className="text-slate-500">SMI-V</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+export default async function HomePage() {
+  const data = await loadDashboardData();
+  return <DashboardCarousel data={data} />;
 }
