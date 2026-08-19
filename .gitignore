@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+/phase5.e2e.env.local
 
 # next.js
 /.next/

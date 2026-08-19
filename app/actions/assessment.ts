@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assessmentSchema } from "@/lib/validation/assessment";
 import { calculateRisk } from "@/lib/utils/risk";
 
 export type AssessmentPatient = {
@@ -108,7 +109,7 @@ export async function saveShiftAssessmentAction(formData: FormData): Promise<Sav
   const hn = textValue(formData.get("hn")).trim();
   const assessDate = textValue(formData.get("assessDate")).trim();
   const shift = textValue(formData.get("shift")).trim();
-  const oasScore = Number(textValue(formData.get("oasScore")));
+  const oasScore = textValue(formData.get("oasScore"));
   let phuaScores: unknown;
   let ghardScores: unknown;
   try {
@@ -118,30 +119,29 @@ export async function saveShiftAssessmentAction(formData: FormData): Promise<Sav
     return { status: "error", message: "ข้อมูลคะแนนไม่ถูกต้อง" };
   }
 
-  const validScores = (scores: unknown, length: number): scores is number[] =>
-    Array.isArray(scores) && scores.length === length && scores.every((score) => [1, 3, 5, 7].includes(score));
-  if (!hn || !assessDate || !shift || ![0, 1, 2, 3].includes(oasScore) || !validScores(phuaScores, 4) || !validScores(ghardScores, 5)) {
-    return { status: "error", message: "กรุณากรอกข้อมูลการประเมินให้ครบ" };
-  }
+  const parsed = assessmentSchema.safeParse({ hn, assessDate, shift, oasScore, phuaScores, ghardScores });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "ข้อมูลการประเมินไม่ถูกต้อง" };
 
   const { supabase, error: accessError } = await getAuthorizedSupabase();
   if (!supabase) return { status: "error", message: accessError };
+  const phua = parsed.data.phuaScores as number[];
+  const ghard = parsed.data.ghardScores as number[];
   const record = {
-    hn,
-    assess_date: assessDate,
-    shift,
-    oas_score: oasScore,
-    phua_risk: calculateRisk(phuaScores),
-    ghard_risk: calculateRisk(ghardScores),
-    phua_scores: phuaScores,
-    ghard_scores: ghardScores,
+    hn: parsed.data.hn,
+    assess_date: parsed.data.assessDate,
+    shift: parsed.data.shift,
+    oas_score: Number(parsed.data.oasScore),
+    phua_risk: calculateRisk(phua),
+    ghard_risk: calculateRisk(ghard),
+    phua_scores: phua,
+    ghard_scores: ghard,
   };
   const { error } = await supabase.from("assessments").insert({
-    hn,
+    hn: parsed.data.hn,
     record_type: "shift_assessment",
-    assess_date: assessDate,
-    shift,
-    oas_score: oasScore,
+    assess_date: parsed.data.assessDate,
+    shift: parsed.data.shift,
+    oas_score: Number(parsed.data.oasScore),
     raw_data: record,
   });
   if (error) return { status: "error", message: `บันทึกผลล้มเหลว: ${error.message}` };

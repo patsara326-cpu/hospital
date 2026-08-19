@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { loginSchema, registerSchema } from "@/lib/validation/auth";
 
 export type AuthActionState = {
   status: "idle" | "error" | "success";
@@ -32,19 +33,28 @@ function authErrorMessage(message: string) {
   return message;
 }
 
+function isMissingDatabaseFunction(error: { code?: string; message: string } | null): boolean {
+  if (!error) return false;
+  return error.code === "PGRST202"
+    || error.message.toLowerCase().includes("schema cache")
+    || error.message.toLowerCase().includes("could not find the function");
+}
+
 export async function loginAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const username = readText(formData, "username");
-  const password = readValue(formData, "password");
-
-  if (!username || !password) {
+  const parsed = loginSchema.safeParse({
+    username: readText(formData, "username"),
+    password: readValue(formData, "password"),
+  });
+  if (!parsed.success) {
     return {
       status: "error",
-      message: "กรุณากรอก Username และ Password",
+      message: parsed.error.issues[0]?.message ?? "ข้อมูลเข้าสู่ระบบไม่ถูกต้อง",
     };
   }
+  const { username, password } = parsed.data;
 
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
@@ -63,6 +73,15 @@ export async function loginAction(
     return { status: "error", message: authErrorMessage(error.message) };
   }
 
+  const { data: role, error: roleError } = await supabase.rpc("current_app_role");
+  if (!roleError && role === "pending") {
+    await supabase.auth.signOut();
+    return {
+      status: "error",
+      message: "บัญชียังไม่ได้รับอนุมัติสิทธิ์จากผู้ดูแลระบบ",
+    };
+  }
+
   redirect("/dashboard");
 }
 
@@ -70,30 +89,21 @@ export async function registerAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const prefix = readText(formData, "prefix");
-  const firstName = readText(formData, "firstName");
-  const lastName = readText(formData, "lastName");
-  const username = readText(formData, "username");
-  const password = readValue(formData, "password");
-  const confirmPassword = readValue(formData, "confirmPassword");
-
-  if (
-    !prefix ||
-    !firstName ||
-    !lastName ||
-    !username ||
-    !password ||
-    !confirmPassword
-  ) {
-    return { status: "error", message: "กรุณากรอกข้อมูลให้ครบทุกช่อง" };
-  }
-
-  if (password !== confirmPassword) {
+  const parsed = registerSchema.safeParse({
+    prefix: readText(formData, "prefix"),
+    firstName: readText(formData, "firstName"),
+    lastName: readText(formData, "lastName"),
+    username: readText(formData, "username"),
+    password: readValue(formData, "password"),
+    confirmPassword: readValue(formData, "confirmPassword"),
+  });
+  if (!parsed.success) {
     return {
       status: "error",
-      message: "รหัสผ่าน และ ยืนยันรหัสผ่าน ไม่ตรงกัน",
+      message: parsed.error.issues[0]?.message ?? "ข้อมูลสมัครสมาชิกไม่ถูกต้อง",
     };
   }
+  const { prefix, firstName, lastName, username, password } = parsed.data;
 
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
@@ -106,6 +116,14 @@ export async function registerAction(
   const { error: authError } = await supabase.auth.signUp({
     email: `${username}@app.local`,
     password,
+    options: {
+      data: {
+        username,
+        prefix,
+        first_name: firstName,
+        last_name: lastName,
+      },
+    },
   });
 
   if (authError) {
@@ -115,7 +133,16 @@ export async function registerAction(
     };
   }
 
-  // Keep the legacy users schema: prefix, first_name, last_name, username.
+  // Hardened databases create the profile atomically from an auth.users trigger.
+  // Keep the legacy insert only while the migration/RPC is not installed yet.
+  const { error: roleFunctionError } = await supabase.rpc("current_app_role");
+  if (!roleFunctionError || !isMissingDatabaseFunction(roleFunctionError)) {
+    return {
+      status: "success",
+      message: "สมัครสมาชิกเรียบร้อยแล้ว กรุณารอผู้ดูแลระบบอนุมัติสิทธิ์ก่อนเข้าสู่ระบบ",
+    };
+  }
+
   const { error: profileError } = await supabase.from("users").insert({
     username,
     prefix,

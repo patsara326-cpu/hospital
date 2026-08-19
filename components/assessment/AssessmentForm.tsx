@@ -1,10 +1,15 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { loadAssessmentPatientsAction, saveShiftAssessmentAction, type AssessmentPatient } from "@/app/actions/assessment";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ASSESSMENT_SCORE_VALUES, GHARD_ITEMS, PHUA_ITEMS } from "@/lib/constants/scales";
 import { calculateRisk, type RiskCategory } from "@/lib/utils/risk";
-import { formatDateBE } from "@/lib/utils/date";
+import { formatDateBE, todayISOInThailand } from "@/lib/utils/date";
+import { assessmentSchema, type AssessmentFormValues } from "@/lib/validation/assessment";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import ScaleTable from "./ScaleTable";
 
 const GENDERS = [
@@ -13,10 +18,6 @@ const GENDERS = [
 ] as const;
 const SHIFTS = ["เวรดึก", "เวรเช้า", "เวรบ่าย"] as const;
 const OAS_OPTIONS = [0, 1, 2, 3] as const;
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function patientName(patient: AssessmentPatient) {
   return [patient.prefix, patient.full_name].filter(Boolean).join(" ") || patient.hn;
@@ -28,20 +29,31 @@ function riskFor(scores: Array<number | null>, length: number): RiskCategory | n
     : null;
 }
 
+const assessmentDefaults = (): AssessmentFormValues => ({
+  hn: "",
+  assessDate: todayISOInThailand(),
+  shift: "",
+  oasScore: "",
+  phuaScores: PHUA_ITEMS.map(() => null),
+  ghardScores: GHARD_ITEMS.map(() => null),
+});
+
 export default function AssessmentForm() {
   const [gender, setGender] = useState("");
   const [patients, setPatients] = useState<AssessmentPatient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<AssessmentPatient | null>(null);
-  const [assessDate, setAssessDate] = useState(today);
-  const [shift, setShift] = useState("");
-  const [oasScore, setOasScore] = useState("");
-  const [phuaScores, setPhuaScores] = useState<Array<number | null>>(() => PHUA_ITEMS.map(() => null));
-  const [ghardScores, setGhardScores] = useState<Array<number | null>>(() => GHARD_ITEMS.map(() => null));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const assessmentSectionRef = useRef<HTMLDivElement>(null);
+  const assessmentSectionRef = useRef<HTMLFormElement>(null);
+
+  const { control, register, handleSubmit, reset, setValue, formState: { errors } } = useForm<AssessmentFormValues>({
+    resolver: zodResolver(assessmentSchema),
+    defaultValues: assessmentDefaults(),
+  });
+  const phuaScores = useWatch({ control, name: "phuaScores" });
+  const ghardScores = useWatch({ control, name: "ghardScores" });
 
   const phuaRisk = useMemo(() => riskFor(phuaScores, PHUA_ITEMS.length), [phuaScores]);
   const ghardRisk = useMemo(() => riskFor(ghardScores, GHARD_ITEMS.length), [ghardScores]);
@@ -51,6 +63,7 @@ export default function AssessmentForm() {
     setSelectedPatient(null);
     setError("");
     setMessage("");
+    reset(assessmentDefaults());
     setLoading(true);
     const result = await loadAssessmentPatientsAction(value);
     setLoading(false);
@@ -62,8 +75,7 @@ export default function AssessmentForm() {
     setSelectedPatient(patient);
     setError("");
     setMessage("");
-    setPhuaScores(PHUA_ITEMS.map(() => null));
-    setGhardScores(GHARD_ITEMS.map(() => null));
+    reset({ ...assessmentDefaults(), hn: patient.hn });
   }
 
   useEffect(() => {
@@ -71,22 +83,18 @@ export default function AssessmentForm() {
     assessmentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [selectedPatient]);
 
-  async function saveAssessment() {
-    if (!selectedPatient || !assessDate || !shift || oasScore === "" || !phuaRisk || !ghardRisk) {
-      setError("กรุณาเลือกผู้ป่วยและกรอกข้อมูลการประเมินให้ครบถ้วน");
-      setMessage("");
-      return;
-    }
+  async function saveAssessment(values: AssessmentFormValues) {
+    if (!selectedPatient || selectedPatient.hn !== values.hn) return setError("กรุณาเลือกผู้ป่วยก่อนบันทึก");
     setSaving(true);
     setError("");
     setMessage("");
     const formData = new FormData();
-    formData.set("hn", selectedPatient.hn);
-    formData.set("assessDate", assessDate);
-    formData.set("shift", shift);
-    formData.set("oasScore", oasScore);
-    formData.set("phuaScores", JSON.stringify(phuaScores));
-    formData.set("ghardScores", JSON.stringify(ghardScores));
+    formData.set("hn", values.hn);
+    formData.set("assessDate", values.assessDate);
+    formData.set("shift", values.shift);
+    formData.set("oasScore", values.oasScore);
+    formData.set("phuaScores", JSON.stringify(values.phuaScores));
+    formData.set("ghardScores", JSON.stringify(values.ghardScores));
     const result = await saveShiftAssessmentAction(formData);
     setSaving(false);
     if (result.status === "error") {
@@ -95,10 +103,7 @@ export default function AssessmentForm() {
     }
     setMessage(result.message);
     setSelectedPatient(null);
-    setPhuaScores(PHUA_ITEMS.map(() => null));
-    setGhardScores(GHARD_ITEMS.map(() => null));
-    setShift("");
-    setOasScore("");
+    reset(assessmentDefaults());
   }
 
   return (
@@ -142,7 +147,7 @@ export default function AssessmentForm() {
         ) : null}
 
         {selectedPatient ? (
-          <div ref={assessmentSectionRef} className="mt-8 scroll-mt-24">
+          <form ref={assessmentSectionRef} onSubmit={handleSubmit(saveAssessment)} className="mt-8 scroll-mt-24" noValidate>
             <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-slate-700">
               <h2 className="mb-3 border-b border-indigo-200 pb-2 text-base font-bold text-indigo-950">ข้อมูลผู้ป่วยที่เลือก</h2>
               <div className="grid gap-3 md:grid-cols-2">
@@ -158,20 +163,22 @@ export default function AssessmentForm() {
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <label className="text-sm font-medium text-slate-700">วันที่ประเมิน<input type="date" value={assessDate} onChange={(event) => setAssessDate(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5" /></label>
-              <label className="text-sm font-medium text-slate-700">เวร<select value={shift} onChange={(event) => setShift(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5"><option value="">เลือกเวร</option>{SHIFTS.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-              <fieldset className="text-sm font-medium text-slate-700"><legend>OAS</legend><div className="mt-2 flex gap-4">{OAS_OPTIONS.map((value) => <label key={value} className="flex items-center gap-1"><input type="radio" name="oas-score" value={value} checked={oasScore === String(value)} onChange={() => setOasScore(String(value))} className="accent-indigo-600" />{value}</label>)}</div></fieldset>
+              <label className="text-sm font-medium text-slate-700">วันที่ประเมิน<Input type="date" className="mt-1" {...register("assessDate")} /><span className="text-sm text-destructive">{errors.assessDate?.message}</span></label>
+              <label className="text-sm font-medium text-slate-700">เวร<select {...register("shift")} className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"><option value="">เลือกเวร</option>{SHIFTS.map((value) => <option key={value} value={value}>{value}</option>)}</select><span className="text-sm text-destructive">{errors.shift?.message}</span></label>
+              <fieldset className="text-sm font-medium text-slate-700"><legend>OAS</legend><div className="mt-2 flex gap-4">{OAS_OPTIONS.map((value) => <label key={value} className="flex items-center gap-1"><input type="radio" value={value} {...register("oasScore")} className="accent-indigo-600" />{value}</label>)}</div><span className="text-sm text-destructive">{errors.oasScore?.message}</span></fieldset>
             </div>
 
-            <ScaleTable title="PHUA" items={PHUA_ITEMS} scores={phuaScores} values={ASSESSMENT_SCORE_VALUES} risk={phuaRisk} onChange={(index, value) => setPhuaScores((current) => current.map((score, itemIndex) => itemIndex === index ? value : score))} />
-            <ScaleTable title="G-HARD" items={GHARD_ITEMS} scores={ghardScores} values={ASSESSMENT_SCORE_VALUES} risk={ghardRisk} onChange={(index, value) => setGhardScores((current) => current.map((score, itemIndex) => itemIndex === index ? value : score))} />
+            <ScaleTable title="PHUA" items={PHUA_ITEMS} scores={phuaScores} values={ASSESSMENT_SCORE_VALUES} risk={phuaRisk} onChange={(index, value) => setValue("phuaScores", phuaScores.map((score, itemIndex) => itemIndex === index ? value : score), { shouldValidate: true })} />
+            <p className="text-sm text-destructive">{errors.phuaScores?.message}</p>
+            <ScaleTable title="G-HARD" items={GHARD_ITEMS} scores={ghardScores} values={ASSESSMENT_SCORE_VALUES} risk={ghardRisk} onChange={(index, value) => setValue("ghardScores", ghardScores.map((score, itemIndex) => itemIndex === index ? value : score), { shouldValidate: true })} />
+            <p className="text-sm text-destructive">{errors.ghardScores?.message}</p>
 
             <div className="mt-6 flex justify-end">
-              <button type="button" onClick={saveAssessment} disabled={saving} className="rounded-xl bg-gradient-to-r from-indigo-600 to-sky-500 px-5 py-2.5 font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60">
+              <Button type="submit" disabled={saving}>
                 {saving ? "กำลังบันทึก..." : "บันทึกผลการประเมิน"}
-              </button>
+              </Button>
             </div>
-          </div>
+          </form>
         ) : null}
       </section>
     </div>

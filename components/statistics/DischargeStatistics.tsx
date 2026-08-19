@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 
+import { FilterSelect, StatisticsPage } from "@/components/statistics/StatisticsPage";
+import { STATISTIC_MONTHS, STATISTIC_RESIDENCE_OPTIONS, STATISTIC_SMI_OPTIONS } from "@/lib/constants/statistics";
 import { downloadExcelFile } from "@/lib/utils/export";
-import { formatDateBE } from "@/lib/utils/date";
+import { formatDateBE, getThailandDateParts } from "@/lib/utils/date";
 
 export type DischargeStatisticRow = {
   id: string;
@@ -25,36 +27,6 @@ type Props = {
   error: string | null;
 };
 
-const MONTHS = [
-  "มกราคม",
-  "กุมภาพันธ์",
-  "มีนาคม",
-  "เมษายน",
-  "พฤษภาคม",
-  "มิถุนายน",
-  "กรกฎาคม",
-  "สิงหาคม",
-  "กันยายน",
-  "ตุลาคม",
-  "พฤศจิกายน",
-  "ธันวาคม",
-];
-
-const SMI_OPTIONS = [
-  "SMI-V 1",
-  "SMI-V 2",
-  "SMI-V 3",
-  "SMI-V 4",
-  "ไม่เข้าข่าย SMI-V",
-];
-
-const RESIDENCE_OPTIONS = [
-  "นอกเขตอำเภอเมืองชลบุรี",
-  "ในเขตอำเภอเมืองชลบุรี",
-  "นอกจังหวัด",
-  "เร่ร่อน",
-];
-
 function rawText(row: DischargeStatisticRow, key: string): string {
   const value = row.raw_data[key];
   return typeof value === "string" || typeof value === "number" ? String(value) : "";
@@ -69,32 +41,6 @@ function displayName(row: DischargeStatisticRow): string {
 function displaySubstance(row: DischargeStatisticRow): string {
   const substance = rawText(row, "substance_type").trim();
   return substance || "ไม่ใช้";
-}
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex min-w-40 flex-col gap-1 text-sm font-medium text-slate-700">
-      {label}
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-      >
-        <option value="">ทั้งหมด</option>
-        {children}
-      </select>
-    </label>
-  );
 }
 
 export default function DischargeStatistics({
@@ -113,9 +59,9 @@ export default function DischargeStatistics({
       Array.from(
         new Set(
           initialRows
-            .map((row) => new Date(row.discharge_date))
-            .filter((date) => !Number.isNaN(date.getTime()))
-            .map((date) => date.getFullYear() + 543),
+            .map((row) => getThailandDateParts(row.discharge_date))
+            .filter((date): date is NonNullable<typeof date> => date !== null)
+            .map((date) => date.year + 543),
         ),
       ).sort((a, b) => b - a),
     [initialRows],
@@ -124,10 +70,10 @@ export default function DischargeStatistics({
   const filteredRows = useMemo(
     () =>
       initialRows.filter((row) => {
-        const date = new Date(row.discharge_date);
-        if ((month || year) && Number.isNaN(date.getTime())) return false;
-        if (month && date.getMonth() + 1 !== Number(month)) return false;
-        if (year && date.getFullYear() + 543 !== Number(year)) return false;
+        const date = getThailandDateParts(row.discharge_date);
+        if ((month || year) && !date) return false;
+        if (month && (!date || date.month !== Number(month))) return false;
+        if (year && (!date || date.year + 543 !== Number(year))) return false;
         if (smiv && row.smi_type !== smiv) return false;
 
         if (residence === "เร่ร่อน") {
@@ -173,48 +119,33 @@ export default function DischargeStatistics({
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">Statistics</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-800 md:text-3xl">{title}</h1>
-          </div>
-          <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-            ยอดรวมผู้ป่วยจำหน่าย: {filteredRows.length} ราย
-          </div>
-        </div>
-
-        {error ? (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-        ) : null}
-
-        <div className="mt-6 flex flex-wrap items-end gap-3">
+    <StatisticsPage
+      title={title}
+      totalLabel="ยอดรวมผู้ป่วยจำหน่าย"
+      total={filteredRows.length}
+      error={error}
+      onExport={exportAsExcel}
+      filters={
+        <>
           <FilterSelect label="เดือน" value={month} onChange={setMonth}>
-            {MONTHS.map((item, index) => <option key={item} value={index + 1}>{item}</option>)}
+            {STATISTIC_MONTHS.map((item, index) => <option key={item} value={index + 1}>{item}</option>)}
           </FilterSelect>
           <FilterSelect label="ปี (พ.ศ.)" value={year} onChange={setYear}>
             {years.map((item) => <option key={item} value={item}>{item}</option>)}
           </FilterSelect>
           <FilterSelect label="ประเภทผู้ป่วย (SMI-V)" value={smiv} onChange={setSmiv}>
-            {SMI_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+            {STATISTIC_SMI_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </FilterSelect>
           <FilterSelect label="ที่อยู่" value={residence} onChange={setResidence}>
-            {RESIDENCE_OPTIONS.map((item) => (
+            {STATISTIC_RESIDENCE_OPTIONS.map((item) => (
               <option key={item} value={item}>
                 {item === "เร่ร่อน" ? "เร่ร่อน/อยู่สถานสงเคราะห์" : item}
               </option>
             ))}
           </FilterSelect>
-          <button
-            type="button"
-            onClick={exportAsExcel}
-            className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
-          >
-            ⬇ ดาวน์โหลด Excel
-          </button>
-        </div>
-
+        </>
+      }
+    >
         <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-blue-600 text-white">
@@ -259,7 +190,6 @@ export default function DischargeStatistics({
             </tbody>
           </table>
         </div>
-      </section>
-    </div>
+    </StatisticsPage>
   );
 }

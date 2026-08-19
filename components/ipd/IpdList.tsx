@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { formatDateBE } from "@/lib/utils/date";
+
 export type IpdAssessmentRow = {
   hn: string | null;
   raw_data: Record<string, unknown> | null;
@@ -51,10 +53,7 @@ function displayValue(key: string, value: unknown) {
   if (typeof value === "boolean") return value ? "ใช่" : "ไม่ใช่";
 
   if (key.includes("date")) {
-    const date = new Date(String(value));
-    if (!Number.isNaN(date.valueOf())) {
-      return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(date);
-    }
+    return formatDateBE(String(value), String(value));
   }
 
   if (typeof value === "object") return JSON.stringify(value);

@@ -5,7 +5,7 @@ import {
   searchBackupHistory,
   type BackupHistoryRow,
 } from "@/app/actions/history";
-import { formatDateBE } from "@/lib/utils/date";
+import { formatDateBE, getThailandDateParts } from "@/lib/utils/date";
 import { useActionState, useMemo, useState } from "react";
 
 const MONTHS = [
@@ -40,10 +40,10 @@ function filterHistory(
 
   return rows.filter((row) => {
     if (!row.admit_date) return !month && !year;
-    const date = new Date(row.admit_date);
-    if (Number.isNaN(date.valueOf())) return false;
-    if (year && date.getFullYear() !== Number(year)) return false;
-    if (month && date.getMonth() + 1 !== Number(month)) return false;
+    const date = getThailandDateParts(row.admit_date);
+    if (!date) return false;
+    if (year && date.year !== Number(year)) return false;
+    if (month && date.month !== Number(month)) return false;
     return true;
   });
 }
@@ -89,7 +89,7 @@ export default function HistorySearch() {
     () => filterHistory(state.history ?? [], month, year),
     [month, state.history, year],
   );
-  const currentYear = new Date().getFullYear();
+  const currentYear = getThailandDateParts(new Date())?.year ?? 2026;
   const patient = state.patient;
 
   return (

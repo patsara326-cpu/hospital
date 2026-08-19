@@ -1,7 +1,7 @@
 "use server";
 
-import { IOR_BEHAVIORS, IOR_LEVELS } from "@/lib/constants/ior";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { iorSchema } from "@/lib/validation/ior";
 import type { Json } from "@/types/database.types";
 
 export type IorPatient = {
@@ -69,13 +69,8 @@ export async function saveIorRecordAction(formData: FormData): Promise<SaveIorSt
     return { status: "error", message: "ข้อมูลพฤติกรรมไม่ถูกต้อง" };
   }
 
-  const validBehaviors =
-    Array.isArray(behaviors) &&
-    behaviors.length > 0 &&
-    behaviors.every((behavior) => typeof behavior === "string" && IOR_BEHAVIORS.includes(behavior as (typeof IOR_BEHAVIORS)[number]));
-  if (!hn || !recordDate) return { status: "error", message: "กรุณาค้นหาผู้ป่วยและเลือกวันที่" };
-  if (!validBehaviors) return { status: "error", message: "กรุณาเลือกพฤติกรรมรุนแรงอย่างน้อย 1 รายการ" };
-  if (!IOR_LEVELS.includes(level as (typeof IOR_LEVELS)[number])) return { status: "error", message: "กรุณาเลือก Level" };
+  const parsed = iorSchema.safeParse({ hn, recordDate, behaviors, level });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "ข้อมูล IOR ไม่ถูกต้อง" };
 
   const { supabase, error: authError } = await authorizedSupabase();
   if (!supabase) return { status: "error", message: authError };
@@ -88,10 +83,10 @@ export async function saveIorRecordAction(formData: FormData): Promise<SaveIorSt
   if (!patient?.[0]) return { status: "error", message: `ไม่พบผู้ป่วยรหัส HN: ${hn}` };
 
   const { error } = await supabase.from("ior_records").insert({
-    hn,
-    record_date: recordDate,
-    behaviors: behaviors as Json,
-    level,
+    hn: parsed.data.hn,
+    record_date: parsed.data.recordDate,
+    behaviors: parsed.data.behaviors as Json,
+    level: parsed.data.level,
   });
   if (error) return { status: "error", message: `เกิดข้อผิดพลาด: ${error.message}` };
   return { status: "success", message: "✅ บันทึกข้อมูลสำเร็จ" };

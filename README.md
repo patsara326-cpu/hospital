@@ -1,62 +1,67 @@
-## Tasks ที่ยังเหลือ
+# Hospital psychiatric patient system
 
-### 1. เพิ่มการแสดงวันที่รับผู้ป่วยเป็น พ.ศ.
+Next.js 16 App Router migration of the legacy psychiatric patient registration,
+assessment, discharge, IOR, IPD, dashboard, history, and statistics application.
 
-ของเดิมมี:
+## Migration status (19 August 2026)
 
-- ค่า ISO สำหรับบันทึกฐานข้อมูล
-- ช่องแสดงวันที่แบบ พ.ศ. ให้ผู้ใช้เห็น
-- ตั้งค่าเริ่มต้นเป็นวันที่ปัจจุบัน
+- [x] Restore detailed legacy SMI-V/OAS choices and clinical care guidance.
+- [x] Add shared Zod validation on client and Server Actions.
+- [x] Migrate login, registration, new patient, edit, discharge, IOR, and assessment
+  forms to React Hook Form and shadcn/ui primitives.
+- [x] Standardize date-only values to `Asia/Bangkok` and display Thai Buddhist Era dates.
+- [x] Add reproducible Supabase baseline and hardening migrations.
+- [x] Add RLS role design (`pending`, `clinician`, `auditor`, `admin`) and audit logging.
+- [x] Add atomic RPCs for registration, edit, and discharge workflows.
+- [x] Add the `ior_statistics` view with an application fallback until migration deployment.
+- [x] Restrict IPD lists to current rows in `patients`.
+- [x] Consolidate statistics filters, panel layout, and Excel export UI.
+- [x] Use self-hosted Sarabun/Kanit through `next/font/local`.
+- [x] Upgrade SheetJS to vendored 0.20.3; production dependency audit is clean.
+- [x] Pass unit tests, TypeScript, lint, production build, and unauthenticated browser smoke tests.
+- [ ] Apply migrations to a staging Supabase project and run the security checklist.
+- [ ] Generate `types/database.types.ts` from that remote schema with Supabase CLI access.
+- [ ] Run authenticated end-to-end tests for all clinical write and export flows.
+- [ ] Rotate the legacy anon key after RLS is verified.
 
-ปัจจุบันมีเพียง <input type="date"> และไม่มีช่องแสดงวันที่แบบ พ.ศ.
+Database deployment and security steps are documented in
+[`supabase/README.md`](supabase/README.md). The application has compatibility fallbacks
+for the existing database, so the local code can be deployed alongside the old schema
+while staging migration validation is pending.
 
-ไฟล์ที่เกี่ยวข้อง: components/patients/NewPatientWizard.tsx
+## Quality commands
 
-### 2. Generate และตรวจสอบ TypeScript types จาก Supabase จริง
+```sh
+npm install
+npm test
+npm run lint
+npm run build
+npm audit --omit=dev
+npm run e2e:check
+npm run e2e
+```
 
-ปัจจุบัน types/database.types.ts เป็น type ที่เขียนด้วยมือ ยังไม่ได้ generate จาก schema จริง
+## Required inputs for Phase 5
 
-ต้องตรวจสอบให้ตรงกับตารางเดิม:
+Use a non-production Supabase branch/project and provide:
 
-- users
-- patients
-- assessments
-- backup
-- ior_records
+1. approval to link/push the checked-in migrations to staging;
+2. a Supabase CLI access token (set outside source control) for remote type generation;
+3. a dedicated QA account with `clinician` role;
+4. an approved synthetic HN prefix and permission to create/delete its test records.
 
-โดยเฉพาะ nullable fields, raw_data, และชนิดของ primary key
+No production patient record should be used for automated QA.
 
-### 3. ย้ายการ join ข้อมูล IOR ไปเป็น View หรือ RPC
+### Phase 5 harness
 
-หน้า incident statistics ปัจจุบันยัง query ior_records แล้ว query patients แยกเอง เหมือน logic เดิม
+The repository now pins the Supabase CLI and Playwright as development dependencies.
+Copy `phase5.e2e.env.example` to the ignored `phase5.e2e.env.local`, fill only staging
+credentials, and run `npm run e2e:check` before any browser test. The guard rejects a
+staging ref that matches the declared production ref, rejects non-local application
+URLs, and requires the explicit value `E2E_ALLOW_MUTATIONS=staging-only`.
 
-Migration guide แนะนำให้ย้ายเป็น Supabase View/RPC เพื่อลด round-trip และทำให้ query มีประสิทธิภาพขึ้น
-
-ไฟล์ปัจจุบัน: app/(main)/statistics/incidents/page.tsx
-
-### 4. ตรวจสอบความปลอดภัยของ Supabase
-
-ยังต้องทำ:
-
-- ตรวจสอบ RLS ทุกตาราง
-- กำหนดสิทธิ์ตามบทบาทผู้ใช้
-- พิจารณา audit log
-- Rotate anon key เดิมที่เคยอยู่ใน legacy code
-
-### 5. ทำ authenticated end-to-end QA
-
-ยังต้องทดสอบด้วย session จริงทุก flow:
-
-- Login/logout
-- ลงทะเบียนผู้ป่วย
-- ประเมินรายเวร
-- บันทึก IOR
-- แก้ไข/จำหน่าย
-- Export Excel
-- Dashboard swipe
-- ตรวจสอบ RLS และ Server Actions
-
-### 6. งานโครงสร้างตาม Migration Guide
-
-- พิจารณารวมหน้า statistics ที่ซ้ำกันเป็น reusable `StatisticsPage`
-- ตรวจสอบการใช้ `next/font` ตาม migration guide
+`npm run e2e` starts the app locally against the staging Supabase project, logs in as
+the QA clinician, and verifies registration, edit, shift assessment, IOR, three Excel
+exports, and discharge. It then uses the staging service-role key server-side in the
+test runner to delete only the exact synthetic HN created during that run. The key is
+never passed to browser code and must never be committed.

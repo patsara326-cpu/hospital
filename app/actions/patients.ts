@@ -1,6 +1,14 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  newPatientInputFromFormData,
+  newPatientSchema,
+  type NewPatientFormValues,
+} from "@/lib/validation/new-patient";
+import { todayISOInThailand } from "@/lib/utils/date";
+import { dischargeSchema } from "@/lib/validation/discharge";
+import { editPatientSchema } from "@/lib/validation/edit-patient";
 import type { Json } from "@/types/database.types";
 
 export type SavePatientState = {
@@ -18,6 +26,7 @@ export type NewPatientResult = {
 
 export type SaveNewPatientState = SavePatientState & {
   result?: NewPatientResult;
+  fieldErrors?: Partial<Record<keyof NewPatientFormValues, string[]>>;
 };
 
 export type EditPatientForm = {
@@ -69,6 +78,12 @@ const emptyEditPatientForm: EditPatientForm = {
 function readRecordText(record: Record<string, unknown>, key: string): string {
   const value = record[key];
   return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function isMissingDatabaseFunction(error: { code?: string; message: string }): boolean {
+  return error.code === "PGRST202"
+    || error.message.toLowerCase().includes("schema cache")
+    || error.message.toLowerCase().includes("could not find the function");
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -180,40 +195,54 @@ export async function searchPatientForEditAction(
 export async function saveEditedPatientAction(
   formData: FormData,
 ): Promise<SavePatientState> {
-  const hn = readText(formData, "hn");
-  if (!hn) return { status: "error", message: "HN ไม่ถูกต้อง" };
+  const input = Object.fromEntries(
+    Object.keys(emptyEditPatientForm).map((key) => [
+      key,
+      key === "is_smi_v" ? formData.get(key) === "true" : readText(formData, key),
+    ]),
+  );
+  const parsed = editPatientSchema.safeParse(input);
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "ข้อมูลผู้ป่วยไม่ถูกต้อง" };
+  const values = parsed.data;
+  const { hn } = values;
 
   const { supabase, error: accessError } = await getAuthorizedSupabase();
   if (!supabase) return { status: "error", message: accessError };
 
-  const ageText = readText(formData, "age");
-  const oasText = readText(formData, "oas_score");
+  const ageText = values.age;
+  const oasText = values.oas_score;
   const payload = {
     hn,
-    prefix: readText(formData, "prefix") || null,
-    full_name: readText(formData, "full_name") || null,
-    gender: readText(formData, "gender") || null,
+    prefix: values.prefix || null,
+    full_name: values.full_name || null,
+    gender: values.gender || null,
     age: ageText ? Number(ageText) : null,
-    smi_type: readText(formData, "smi_type") || null,
-    substance: readText(formData, "substance_use") || null,
-    admit_date: readText(formData, "admission_date") || null,
-    admitting_doctor: readText(formData, "admitting_doctor") || null,
+    smi_type: values.smi_type || null,
+    substance: values.substance_use || null,
+    admit_date: values.admission_date || null,
+    admitting_doctor: values.admitting_doctor || null,
     oas_score: oasText ? Number(oasText) : null,
-    oas_risk: readText(formData, "oas_risk_level") || null,
+    oas_risk: values.oas_risk_level || null,
   };
+
+  const assessmentId = readText(formData, "assessmentId");
+  const { error: rpcError } = await supabase.rpc("update_patient_with_assessment", {
+    p_profile: payload as Json,
+    p_assessment_id: assessmentId,
+    p_raw_data: values as Json,
+  });
+  if (!rpcError) return { status: "success", message: "บันทึกข้อมูลผู้ป่วยเรียบร้อยแล้ว" };
+  if (!isMissingDatabaseFunction(rpcError)) {
+    return { status: "error", message: `บันทึกข้อมูลผู้ป่วยล้มเหลว: ${rpcError.message}` };
+  }
 
   const { error: patientError } = await supabase.from("patients").upsert(payload, { onConflict: "hn" });
   if (patientError) return { status: "error", message: `บันทึกข้อมูลผู้ป่วยล้มเหลว: ${patientError.message}` };
 
-  const assessmentId = readText(formData, "assessmentId");
   if (assessmentId) {
-    const updatedRaw: Record<string, unknown> = {};
-    for (const key of Object.keys(emptyEditPatientForm)) {
-      updatedRaw[key] = key === "is_smi_v" ? formData.get(key) === "true" : readText(formData, key);
-    }
     const { error: assessmentError } = await supabase
       .from("assessments")
-      .update({ raw_data: updatedRaw as Json, oas_score: oasText ? Number(oasText) : null })
+      .update({ raw_data: values as Json, oas_score: oasText ? Number(oasText) : null })
       .eq("id", assessmentId);
     if (assessmentError) return { status: "error", message: `อัปเดต assessment ล้มเหลว: ${assessmentError.message}` };
   }
@@ -273,23 +302,39 @@ export async function searchPatientForDischargeAction(
 }
 
 export async function saveDischargeAction(formData: FormData): Promise<SavePatientState> {
-  const hn = readText(formData, "hn");
-  const dischargeDate = readText(formData, "dischargeDate");
-  const lastDiagnosis = readText(formData, "lastDiagnosis");
-  const dischargeType = readText(formData, "dischargeType");
-  let dischargeMethod = readText(formData, "dischargeMethod");
+  const parsed = dischargeSchema.safeParse({
+    hn: readText(formData, "hn"),
+    dischargeMethod: readText(formData, "dischargeMethod"),
+    transferOther: readText(formData, "transferOther"),
+    dischargeDate: readText(formData, "dischargeDate"),
+    lastDiagnosis: readText(formData, "lastDiagnosis"),
+    dischargeType: readText(formData, "dischargeType"),
+  });
+  if (!parsed.success) {
+    return { status: "error", message: parsed.error.issues[0]?.message ?? "ข้อมูลการจำหน่ายไม่ถูกต้อง" };
+  }
+  const { hn, dischargeDate, lastDiagnosis, dischargeType } = parsed.data;
+  let { dischargeMethod } = parsed.data;
 
   if (dischargeMethod === "transfer") {
-    const transferOther = readText(formData, "transferOther");
+    const { transferOther } = parsed.data;
     dischargeMethod = transferOther ? `transfer (${transferOther})` : "transfer";
-  }
-
-  if (!hn || !dischargeMethod || !dischargeDate || !lastDiagnosis || !dischargeType) {
-    return { status: "error", message: "กรุณากรอกข้อมูลการจำหน่ายให้ครบ" };
   }
 
   const { supabase, error: accessError } = await getAuthorizedSupabase();
   if (!supabase) return { status: "error", message: accessError };
+
+  const { error: rpcError } = await supabase.rpc("discharge_patient", {
+    p_hn: hn,
+    p_discharge_method: dischargeMethod,
+    p_discharge_date: dischargeDate,
+    p_last_diagnosis: lastDiagnosis,
+    p_discharge_type: dischargeType,
+  });
+  if (!rpcError) return { status: "success", message: "จำหน่ายผู้ป่วยเรียบร้อยแล้ว" };
+  if (!isMissingDatabaseFunction(rpcError)) {
+    return { status: "error", message: `จำหน่ายผู้ป่วยล้มเหลว: ${rpcError.message}` };
+  }
 
   const { data: patientData, error: patientError } = await supabase
     .from("patients")
@@ -342,13 +387,6 @@ function readText(formData: FormData, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function readNumber(formData: FormData, key: string): number | null {
-  const value = readText(formData, key);
-  if (!value) return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
 const riskLevelMap: Record<string, string> = {
   "1": "Semi-urgency",
   "2": "Urgency",
@@ -358,56 +396,66 @@ const riskLevelMap: Record<string, string> = {
 export async function saveNewPatientAction(
   formData: FormData,
 ): Promise<SaveNewPatientState> {
-  const firstName = readText(formData, "firstName");
-  const lastName = readText(formData, "lastName");
-  const gender = readText(formData, "gender");
-  const age = readNumber(formData, "age");
-  const hn = readText(formData, "hn");
-  const smiVResult = readText(formData, "smiV");
-
-  if (!firstName || !lastName || !gender || age === null || !hn || !smiVResult) {
-    return { status: "error", message: "กรุณากรอกข้อมูลผู้ป่วยให้ครบถ้วน" };
+  const parsed = newPatientSchema.safeParse(newPatientInputFromFormData(formData));
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const firstError = Object.values(fieldErrors).flat()[0];
+    return {
+      status: "error",
+      message: firstError ?? "ข้อมูลผู้ป่วยไม่ถูกต้อง",
+      fieldErrors,
+    };
   }
+
+  const values = parsed.data;
+  const firstName = values.firstName;
+  const lastName = values.lastName;
+  const gender = values.gender;
+  const age = Number(values.age);
+  const hn = values.hn;
+  const smiVResult = values.smiV;
 
   const { supabase, error: accessError } = await getAuthorizedSupabase();
   if (!supabase) {
     return { status: "error", message: accessError };
   }
 
-  const admissionDate = readText(formData, "admissionDate");
+  const admissionDate = values.admissionDate;
   const record = {
     first_name: firstName,
     last_name: lastName,
     gender,
     age: String(age),
     hn,
-    diagnosis: readText(formData, "diagnosis") === "อื่นๆ"
-      ? readText(formData, "diagnosisOther")
-      : readText(formData, "diagnosis"),
-    admission_source: readText(formData, "admissionSource"),
+    diagnosis: values.diagnosis === "อื่นๆ" ? values.diagnosisOther : values.diagnosis,
+    admission_source: values.admissionSource,
     admission_date: admissionDate,
-    admitting_doctor: readText(formData, "admittingDoctor"),
+    admitting_doctor: values.admittingDoctor,
     smi_v_result: smiVResult,
     is_smi_v: smiVResult !== "ไม่เข้าข่าย SMI-V",
-    oas_score: readText(formData, "oasScore"),
-    oas_risk_level: riskLevelMap[readText(formData, "oasScore")] ?? "Low Risk",
-    aggressive_behavior: readText(formData, "aggressiveBehavior"),
-    substance_use: readText(formData, "substanceUse"),
-    substance_type: readText(formData, "substanceUse") === "ใช้"
-      ? readText(formData, "substanceType")
-      : "",
-    readmit_28_days: readText(formData, "readmit28"),
-    admit_three_times: readText(formData, "admit3times"),
-    admit_number: readText(formData, "admitNumber"),
-    residence_type: readText(formData, "residenceType"),
-    residence_district: readText(formData, "residenceDistrict"),
-    residence_subdistrict: readText(formData, "residenceLocation"),
-    residence_details: readText(formData, "residenceDetails"),
-    caregiver_status: readText(formData, "caregiverStatus"),
-    caregiver_name: readText(formData, "caregiverName"),
-    caregiver_relation: readText(formData, "caregiverRelation"),
-    caregiver_phone: readText(formData, "caregiverPhone"),
-    patient_phone: readText(formData, "patientPhone"),
+    oas_score: values.oasScore,
+    oas_risk_level: riskLevelMap[values.oasScore] ?? "Low Risk",
+    aggressive_behavior: values.aggressiveBehavior,
+    substance_use: values.substanceUse,
+    substance_type: values.substanceUse === "ใช้" ? values.substanceType : "",
+    readmit_28_days: values.readmit28,
+    admit_three_times: values.admit3times,
+    admit_number: values.admitNumber,
+    residence_type: values.residenceType,
+    residence_district: values.residenceDistrict,
+    residence_subdistrict:
+      values.residenceDistrict === "ในเขตอำเภอเมืองชลบุรี"
+        ? values.residenceSubdistrict
+        : values.residenceOtherDistrict,
+    residence_details: values.residenceDetails,
+    caregiver_status: values.caregiverStatus,
+    caregiver_name: values.caregiverName,
+    caregiver_relation:
+      values.caregiverRelation === "อื่นๆ"
+        ? values.caregiverRelationOther
+        : values.caregiverRelation,
+    caregiver_phone: values.caregiverPhone,
+    patient_phone: values.patientPhone,
   };
 
   const profile = {
@@ -418,15 +466,51 @@ export async function saveNewPatientAction(
     age,
     smi_type: smiVResult || "ไม่ระบุ",
     substance: record.substance_use || "ไม่ระบุ",
-    admit_date: admissionDate || new Date().toISOString().split("T")[0],
+    admit_date: admissionDate || todayISOInThailand(),
     admitting_doctor: record.admitting_doctor || "ไม่ระบุ",
     oas_score: record.oas_score ? Number(record.oas_score) : null,
     oas_risk: record.oas_risk_level,
   };
 
+  const initialAssessment = {
+    hn,
+    record_type: "smi-v_admission",
+    assess_date: todayISOInThailand(),
+    shift: null,
+    oas_score: record.oas_score ? Number(record.oas_score) : null,
+    raw_data: record as Json,
+  };
+
+  const { error: rpcError } = await supabase.rpc("register_patient_with_assessment", {
+    p_profile: profile as Json,
+    p_assessment: initialAssessment as Json,
+  });
+  if (!rpcError) {
+    return {
+      status: "success",
+      message: "บันทึกข้อมูลผู้ป่วยเรียบร้อยแล้ว",
+      result: { firstName, lastName, hn, smiVResult, oasScore: values.oasScore },
+    };
+  }
+  if (!isMissingDatabaseFunction(rpcError)) {
+    const duplicate = rpcError.code === "23505" || rpcError.message.includes("duplicate_hn");
+    return {
+      status: "error",
+      message: duplicate ? `มีผู้ป่วย HN ${hn} อยู่ในระบบแล้ว` : `บันทึกข้อมูลผู้ป่วยไม่สำเร็จ: ${rpcError.message}`,
+    };
+  }
+
+  const { data: existingPatient, error: existingError } = await supabase
+    .from("patients")
+    .select("hn")
+    .eq("hn", hn)
+    .maybeSingle();
+  if (existingError) return { status: "error", message: existingError.message };
+  if (existingPatient) return { status: "error", message: `มีผู้ป่วย HN ${hn} อยู่ในระบบแล้ว` };
+
   const { error: profileError } = await supabase
     .from("patients")
-    .upsert(profile, { onConflict: "hn" });
+    .insert(profile);
 
   if (profileError) {
     return {
@@ -435,19 +519,13 @@ export async function saveNewPatientAction(
     };
   }
 
-  const { error: assessmentError } = await supabase.from("assessments").insert({
-    hn,
-    record_type: "smi-v_admission",
-    assess_date: new Date().toISOString().split("T")[0],
-    shift: null,
-    oas_score: record.oas_score ? Number(record.oas_score) : null,
-    raw_data: record,
-  });
+  const { error: assessmentError } = await supabase.from("assessments").insert(initialAssessment);
 
   if (assessmentError) {
+    await supabase.from("patients").delete().eq("hn", hn);
     return {
       status: "error",
-      message: `บันทึกผลประเมินไม่สำเร็จ: ${assessmentError.message}`,
+      message: `บันทึกผลประเมินไม่สำเร็จและยกเลิกข้อมูลผู้ป่วยแล้ว: ${assessmentError.message}`,
     };
   }
 
@@ -459,7 +537,7 @@ export async function saveNewPatientAction(
       lastName,
       hn,
       smiVResult,
-      oasScore: readText(formData, "oasScore"),
+      oasScore: values.oasScore,
     },
   };
 }

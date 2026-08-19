@@ -1,32 +1,39 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
 import {
   saveDischargeAction,
   searchPatientForDischargeAction,
   type DischargePatient,
 } from "@/app/actions/patients";
-import { formatDateBE } from "@/lib/utils/date";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { formatDateBE, todayISOInThailand } from "@/lib/utils/date";
+import { dischargeSchema, type DischargeFormValues } from "@/lib/validation/discharge";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200";
 const labelClass = "block text-sm font-medium text-slate-700";
 
 export default function DischargeForm() {
-  const [searchHn, setSearchHn] = useState("");
   const [patient, setPatient] = useState<DischargePatient | null>(null);
-  const [method, setMethod] = useState("");
-  const [transferOther, setTransferOther] = useState("");
-  const [dischargeDate, setDischargeDate] = useState("");
-  const [lastDiagnosis, setLastDiagnosis] = useState("");
-  const [dischargeType, setDischargeType] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const { control, register, handleSubmit, getValues, reset, setError: setFieldError, formState: { errors } } = useForm<DischargeFormValues>({
+    resolver: zodResolver(dischargeSchema),
+    defaultValues: { hn: "", dischargeMethod: "", transferOther: "", dischargeDate: todayISOInThailand(), lastDiagnosis: "", dischargeType: "" },
+  });
+  const method = useWatch({ control, name: "dischargeMethod" });
+  const dischargeDate = useWatch({ control, name: "dischargeDate" });
 
   async function searchPatient() {
+    const searchHn = getValues("hn").trim();
+    if (!searchHn) return setFieldError("hn", { message: "กรุณากรอกรหัส HN" });
     const data = new FormData();
     data.set("hn", searchHn);
     setLoading(true);
@@ -37,18 +44,18 @@ export default function DischargeForm() {
     setPatient(result.patient);
     setMessage(result.message);
     setError(result.error);
-    if (result.patient) setLastDiagnosis("");
+    if (result.patient) reset({ ...getValues(), hn: result.patient.hn, lastDiagnosis: "" });
   }
 
-  async function saveDischarge() {
+  async function saveDischarge(values: DischargeFormValues) {
     if (!patient) return setError("กรุณาค้นหาและเลือกผู้ป่วยก่อนบันทึก");
     const data = new FormData();
     data.set("hn", patient.hn);
-    data.set("dischargeMethod", method);
-    data.set("transferOther", transferOther);
-    data.set("dischargeDate", dischargeDate);
-    data.set("lastDiagnosis", lastDiagnosis);
-    data.set("dischargeType", dischargeType);
+    data.set("dischargeMethod", values.dischargeMethod);
+    data.set("transferOther", values.transferOther);
+    data.set("dischargeDate", values.dischargeDate);
+    data.set("lastDiagnosis", values.lastDiagnosis);
+    data.set("dischargeType", values.dischargeType);
     setSaving(true);
     setError("");
     setMessage("");
@@ -56,12 +63,7 @@ export default function DischargeForm() {
     setSaving(false);
     if (result.status === "error") return setError(result.message);
     setPatient(null);
-    setSearchHn("");
-    setMethod("");
-    setTransferOther("");
-    setDischargeDate("");
-    setLastDiagnosis("");
-    setDischargeType("");
+    reset({ hn: "", dischargeMethod: "", transferOther: "", dischargeDate: todayISOInThailand(), lastDiagnosis: "", dischargeType: "" });
     setMessage(result.message);
   }
 
@@ -82,20 +84,19 @@ export default function DischargeForm() {
             void searchPatient();
           }}
         >
-          <input
-            value={searchHn}
-            onChange={(event) => setSearchHn(event.target.value)}
+          <Input
+            {...register("hn", { onChange: () => setPatient(null) })}
             placeholder="กรอกรหัส HN"
             className={`${inputClass} mt-0`}
           />
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
           >
             {loading ? "กำลังค้นหา..." : "ค้นหา"}
-          </button>
+          </Button>
         </form>
+        {errors.hn ? <p className="mt-1 text-sm text-destructive">{errors.hn.message}</p> : null}
 
         {error ? (
           <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -109,7 +110,7 @@ export default function DischargeForm() {
         ) : null}
 
         {patient ? (
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <form onSubmit={handleSubmit(saveDischarge)} className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-4" noValidate>
             <div className="grid gap-2 text-sm text-slate-700 md:grid-cols-3">
               <p>
                 <strong>ชื่อ-นามสกุล:</strong>{" "}
@@ -139,8 +140,7 @@ export default function DischargeForm() {
               <label className={labelClass}>
                 วิธีการจำหน่าย
                 <select
-                  value={method}
-                  onChange={(event) => setMethod(event.target.value)}
+                  {...register("dischargeMethod")}
                   className={inputClass}
                 >
                   <option value="">-- เลือกวิธีการจำหน่าย --</option>
@@ -151,19 +151,18 @@ export default function DischargeForm() {
                 </select>
                 {method === "transfer" ? (
                   <input
-                    value={transferOther}
-                    onChange={(event) => setTransferOther(event.target.value)}
+                    {...register("transferOther")}
                     className={inputClass}
                     placeholder="รายละเอียดการ transfer (ถ้ามี)"
                   />
                 ) : null}
+                <span className="text-sm text-destructive">{errors.dischargeMethod?.message}</span>
               </label>
               <label className={labelClass}>
                 จำหน่ายวันที่
-                <input
+                <Input
                   type="date"
-                  value={dischargeDate}
-                  onChange={(event) => setDischargeDate(event.target.value)}
+                  {...register("dischargeDate")}
                   className={inputClass}
                 />
                 {dischargeDate ? (
@@ -171,12 +170,12 @@ export default function DischargeForm() {
                     พ.ศ. {formatDateBE(dischargeDate)}
                   </span>
                 ) : null}
+                <span className="text-sm text-destructive">{errors.dischargeDate?.message}</span>
               </label>
               <label className={`${labelClass} md:col-span-2`}>
                 Last diagnosis
-                <input
-                  value={lastDiagnosis}
-                  onChange={(event) => setLastDiagnosis(event.target.value)}
+                <Input
+                  {...register("lastDiagnosis")}
                   className={inputClass}
                   list="diagnosis-list"
                   placeholder="ระบุ diagnosis สุดท้าย"
@@ -298,6 +297,7 @@ export default function DischargeForm() {
                   <option value="F90.9 Hyperkinetic disorder, unspecified" />
                   <option value="F99 Mental disorder, not otherwise specified" />
                 </datalist>
+                <span className="text-sm text-destructive">{errors.lastDiagnosis?.message}</span>
               </label>
               <fieldset className="md:col-span-2">
                 <legend className={labelClass}>การเยี่ยมบ้าน</legend>
@@ -312,30 +312,26 @@ export default function DischargeForm() {
                     >
                       <input
                         type="radio"
-                        name="discharge-type"
                         value={value}
-                        checked={dischargeType === value}
-                        onChange={(event) =>
-                          setDischargeType(event.target.value)
-                        }
+                        {...register("dischargeType")}
                       />
                       {label}
                     </label>
                   ))}
                 </div>
+                <span className="text-sm text-destructive">{errors.dischargeType?.message}</span>
               </fieldset>
             </div>
             <div className="mt-8 flex justify-end">
-              <button
-                type="button"
-                onClick={() => void saveDischarge()}
+              <Button
+                type="submit"
                 disabled={saving}
-                className="rounded-xl bg-gradient-to-r from-rose-600 to-red-500 px-5 py-2.5 font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:brightness-105 disabled:opacity-50"
+                className="bg-rose-600 hover:bg-rose-700"
               >
                 {saving ? "กำลังบันทึก..." : "บันทึกการจำหน่าย"}
-              </button>
+              </Button>
             </div>
-          </div>
+          </form>
         ) : null}
       </section>
     </div>
