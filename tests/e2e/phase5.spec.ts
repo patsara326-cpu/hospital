@@ -33,6 +33,10 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
 
       await page.locator('[name="oasScore"][value="1"]').check();
       await page.getByRole("button", { name: "ถัดไป" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "ไปต่อ", exact: true })
+        .click();
 
       await page.locator('[name="aggressiveBehavior"]').fill("ข้อมูลสังเคราะห์สำหรับ E2E");
       await page.locator('[name="substanceUse"]').selectOption("ไม่ใช้");
@@ -49,8 +53,14 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       await page.locator('[name="admissionSource"]').selectOption("รับจาก ER");
       await page.locator('[name="admissionDate"]').fill(todayISOInThailand());
       await page.locator('[name="admittingDoctor"]').selectOption({ index: 1 });
-      await page.getByRole("button", { name: "บันทึกข้อมูล", exact: true }).click();
+      await page
+        .getByRole("main")
+        .getByRole("button", { name: "บันทึกข้อมูล", exact: true })
+        .click();
       await expect(page.getByText("บันทึกประเมินเรียบร้อย")).toBeVisible();
+      await page.getByRole("button", { name: "ลงทะเบียนรายใหม่", exact: true }).click();
+      await expect(page.locator('[name="firstName"]')).toHaveValue("");
+      await expect(page.locator('[name="hn"]')).toHaveValue("");
     });
 
     await test.step("edit the patient", async () => {
@@ -59,8 +69,13 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       await page.getByRole("button", { name: "ค้นหา", exact: true }).click();
       await expect(page.locator('[name="hn"]')).toHaveValue(hn);
       await page.locator('[name="patient_phone"]').fill("0000000001");
-      await page.getByRole("button", { name: "บันทึกข้อมูล", exact: true }).click();
+      await page
+        .getByRole("main")
+        .getByRole("button", { name: "บันทึกข้อมูล", exact: true })
+        .click();
       await expect(page.getByText("บันทึกข้อมูลผู้ป่วยเรียบร้อยแล้ว")).toBeVisible();
+      await expect(page.getByRole("main").locator("form").first().locator("input")).toHaveValue("");
+      await expect(page.locator('[name="patient_phone"]')).toHaveCount(0);
     });
 
     await test.step("save a shift assessment", async () => {
@@ -79,6 +94,7 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       }
       await page.getByRole("button", { name: "บันทึกผลการประเมิน" }).click();
       await expect(page.getByText("บันทึกผลประเมินสำเร็จ")).toBeVisible();
+      await expect(page.locator('[name="shift"]')).toHaveCount(0);
     });
 
     await test.step("save an IOR record", async () => {
@@ -88,8 +104,13 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       await expect(page.getByText(`HN: ${hn}`)).toBeVisible();
       await page.locator('[name="behaviors"]').first().check();
       await page.locator('[name="level"][value="B"]').check();
-      await page.getByRole("button", { name: "บันทึกข้อมูล", exact: true }).click();
+      await page
+        .getByRole("main")
+        .getByRole("button", { name: "บันทึกข้อมูล", exact: true })
+        .click();
       await expect(page.getByText("บันทึกข้อมูลสำเร็จ")).toBeVisible();
+      await expect(page.locator('[name="hn"]')).toHaveValue("");
+      await expect(page.locator('[name="behaviors"]')).toHaveCount(0);
     });
 
     await test.step("download all statistics workbooks", async () => {
@@ -99,6 +120,16 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
         "/statistics/incidents",
       ]) {
         await page.goto(route);
+        const smiFilter = page.getByLabel("ประเภทผู้ป่วย (SMI-V)");
+        await expect(smiFilter.locator("option")).toHaveText([
+          "ทั้งหมด",
+          "SMI-V",
+          "ไม่เข้าข่าย SMI-V",
+        ]);
+        await smiFilter.selectOption("SMI-V");
+        if (route !== "/statistics/discharge/male") {
+          await expect(page.getByRole("main").getByText(hn, { exact: true })).toBeVisible();
+        }
         const downloadPromise = page.waitForEvent("download");
         await page.getByRole("button", { name: /ดาวน์โหลด Excel/ }).click();
         const download = await downloadPromise;
@@ -116,6 +147,12 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       await page.locator('[name="dischargeType"]').first().check();
       await page.getByRole("button", { name: "บันทึกการจำหน่าย" }).click();
       await expect(page.getByText("จำหน่ายผู้ป่วยเรียบร้อยแล้ว")).toBeVisible();
+      await expect(page.locator('[name="hn"]')).toHaveValue("");
+      await expect(page.locator('[name="dischargeMethod"]')).toHaveCount(0);
+
+      await page.goto("/statistics/discharge/male");
+      await page.getByLabel("ประเภทผู้ป่วย (SMI-V)").selectOption("SMI-V");
+      await expect(page.getByRole("main").getByText(hn, { exact: true })).toBeVisible();
     });
   } finally {
     await cleanupSyntheticPatient(env, hn);

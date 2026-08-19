@@ -1,10 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export function FilterSelect({
   label,
@@ -46,16 +46,30 @@ export function StatisticsPage({
   total: number;
   error: string | null;
   filters: ReactNode;
-  onExport: () => void;
+  onExport: () => Promise<void>;
   children: ReactNode;
 }) {
+  const [exportError, setExportError] = useState("");
+  const [exportPending, startExportTransition] = useTransition();
+
+  function exportReport() {
+    setExportError("");
+    startExportTransition(async () => {
+      try {
+        await onExport();
+      } catch (error) {
+        setExportError(error instanceof Error ? error.message : "ไม่สามารถสร้างไฟล์ Excel ได้");
+      }
+    });
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
       <Card className="rounded-3xl">
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">Statistics</p>
-            <CardTitle className="mt-1 text-2xl md:text-3xl">{title}</CardTitle>
+            <h1 className="mt-1 text-2xl font-semibold leading-none tracking-tight md:text-3xl">{title}</h1>
           </div>
           <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
             {totalLabel}: {total} ราย
@@ -63,10 +77,11 @@ export function StatisticsPage({
         </CardHeader>
         <CardContent>
           {error ? <Alert className="border-destructive/40 bg-destructive/10 text-destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
+          {exportError ? <Alert className="mb-4 border-destructive/40 bg-destructive/10 text-destructive"><AlertDescription>{exportError}</AlertDescription></Alert> : null}
           <div className="mt-2 flex flex-wrap items-end gap-3">
             {filters}
-            <Button type="button" onClick={onExport} className="bg-emerald-700 hover:bg-emerald-800">
-              ⬇ ดาวน์โหลด Excel
+            <Button type="button" onClick={exportReport} disabled={exportPending} className="bg-emerald-700 hover:bg-emerald-800">
+              {exportPending ? "กำลังเตรียม Excel..." : "⬇ ดาวน์โหลด Excel"}
             </Button>
           </div>
           {children}

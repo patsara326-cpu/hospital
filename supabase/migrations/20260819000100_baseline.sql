@@ -82,3 +82,25 @@ create table if not exists public.ior_records (
 create index if not exists ior_records_hn_date_idx
   on public.ior_records (hn, record_date desc);
 
+-- Compatibility for the legacy production schema. CREATE TABLE IF NOT EXISTS
+-- does not add columns to tables that already exist, while the hardened RPCs in
+-- the next migration require these additive fields.
+alter table public.patients
+  add column if not exists id uuid default extensions.gen_random_uuid(),
+  add column if not exists raw_data jsonb;
+
+update public.patients
+set id = extensions.gen_random_uuid()
+where id is null;
+
+alter table public.patients
+  alter column id set default extensions.gen_random_uuid(),
+  alter column id set not null;
+
+create unique index if not exists patients_id_key on public.patients (id);
+
+alter table public.assessments
+  add column if not exists phua_risk text,
+  add column if not exists ghard_risk text,
+  add column if not exists phua_scores jsonb,
+  add column if not exists ghard_scores jsonb;

@@ -55,12 +55,16 @@ metadata, so a real remote generation requires a developer's Supabase access tok
 ## Security verification
 
 - Confirm RLS is enabled on `users`, `patients`, `assessments`, `backup`, `ior_records`,
-  and `audit_log`.
+  `audit_log`, and `activity_log`.
 - Confirm `anon` cannot select any of those tables or execute clinical RPCs.
 - Confirm `pending` cannot access PHI.
 - Confirm `auditor` can read but cannot mutate clinical records.
 - Confirm `clinician` can complete the clinical flows but cannot change roles or audit rows.
 - Confirm `admin` can manage roles and read the audit log.
+- Confirm only `auditor` and `admin` can read `activity_log`, and no authenticated role
+  can write either log table directly.
+- Confirm `audit_log.changed_fields` contains field names only and that the legacy
+  `old_data`/`new_data` snapshot columns no longer exist.
 - Rotate the legacy anon key from the Supabase dashboard after the policies are verified,
   then replace deployment environment variables. Never commit the replacement key.
 
@@ -78,3 +82,17 @@ The E2E runner intentionally refuses remote application URLs. It launches the lo
 Next.js app with the staging URL and anon key injected into the child process, which
 keeps the database target reviewable and prevents an already-deployed application from
 silently pointing at another Supabase project.
+
+## Activity-log production rollout
+
+Migrations `20260819000300_activity_logging.sql` and
+`20260819000400_fix_activity_trigger_record_type.sql` were exercised on staging and
+applied to production on 19 August 2026 together with the baseline/hardening migrations.
+The post-deployment check confirmed all existing profiles are Auth-linked clinicians,
+existing clinical row counts are unchanged, anonymous PHI reads return no rows, and the
+two log tables are present. Assign at least one approved username the `admin` role using
+the SQL shown above. No retention job is included: keep the logs until the hospital
+defines and approves its retention policy.
+
+The production project reported no managed physical backups and no PITR at rollout
+time. Enable a Supabase backup option before any future destructive migration.

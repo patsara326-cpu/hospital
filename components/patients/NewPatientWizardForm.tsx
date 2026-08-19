@@ -217,7 +217,7 @@ function ResultCard({ result, onNew }: { result: NewPatientResult; onNew: () => 
   const isSmiv = result.smiVResult !== NON_SMIV_VALUE;
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
-      <Card className="border-emerald-200 bg-white"><CardHeader><div className="flex size-14 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">✓</div><CardTitle className="pt-3 text-2xl">{isSmiv ? "บันทึกประเมินเรียบร้อย" : "ไม่เข้าข่าย SMI-V (บันทึกสำเร็จ)"}</CardTitle></CardHeader><CardContent><div className="grid gap-3 rounded-xl bg-slate-50 p-5 text-sm md:grid-cols-2"><div><strong>ชื่อ:</strong> {result.firstName} {result.lastName}</div><div><strong>HN:</strong> {result.hn}</div><div><strong>ผลประเมิน:</strong> {result.smiVResult}</div>{isSmiv ? <div><strong>OAS:</strong> {result.oasScore}</div> : null}</div><div className="mt-6 flex gap-3"><Link href="/dashboard" className={cn(buttonVariants())}>กลับหน้าหลัก</Link><Button variant="outline" onClick={onNew}>ลงทะเบียนรายใหม่</Button></div></CardContent></Card>
+      <Card className="border-emerald-200 bg-white"><CardHeader><div className="flex size-14 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">✓</div><h1 className="pt-3 text-2xl font-semibold leading-none tracking-tight">{isSmiv ? "บันทึกประเมินเรียบร้อย" : "ไม่เข้าข่าย SMI-V (บันทึกสำเร็จ)"}</h1></CardHeader><CardContent><div className="grid gap-3 rounded-xl bg-slate-50 p-5 text-sm md:grid-cols-2"><div><strong>ชื่อ:</strong> {result.firstName} {result.lastName}</div><div><strong>HN:</strong> {result.hn}</div><div><strong>ผลประเมิน:</strong> {result.smiVResult}</div>{isSmiv ? <div><strong>OAS:</strong> {result.oasScore}</div> : null}</div><div className="mt-6 flex gap-3"><Link href="/dashboard" className={cn(buttonVariants())}>กลับหน้าหลัก</Link><Button variant="outline" onClick={onNew}>ลงทะเบียนรายใหม่</Button></div></CardContent></Card>
     </div>
   );
 }
@@ -283,8 +283,10 @@ export default function NewPatientWizardForm() {
       return;
     }
     setResult(response.result);
-    methods.reset(newPatientDefaultValues);
+    methods.reset({ ...newPatientDefaultValues, admissionDate: todayISOInThailand() });
     setStep(0);
+    setFinalReturnStep(3);
+    setShowCare(false);
   }
 
   if (result) return <ResultCard result={result} onNew={() => setResult(null)} />;
@@ -292,7 +294,7 @@ export default function NewPatientWizardForm() {
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(submit)} className="mx-auto max-w-6xl px-4 py-8 md:px-6" noValidate>
-        <Card className="border-slate-200 bg-white"><CardHeader><p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">New Patient</p><div className="flex flex-wrap items-start justify-between gap-3"><CardTitle className="text-2xl md:text-3xl">แบบประเมินคัดกรองผู้ป่วย SMI-V แรกรับ</CardTitle><span className="rounded-full bg-muted px-3 py-1 text-sm">ขั้นตอน {step + 1}/{steps.length}</span></div><div className="mt-3 grid gap-2 sm:grid-cols-5">{steps.map(([title, description], index) => <div key={title} className={`rounded-lg border p-2 text-xs ${index === step ? "border-primary bg-indigo-50 text-indigo-700" : index < step ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}><strong>{index + 1}. {title}</strong><span className="mt-1 block">{description}</span></div>)}</div></CardHeader><CardContent>
+        <Card className="border-slate-200 bg-white"><CardHeader><p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">New Patient</p><div className="flex flex-wrap items-start justify-between gap-3"><h1 className="text-2xl font-semibold leading-none tracking-tight md:text-3xl">แบบประเมินคัดกรองผู้ป่วย SMI-V แรกรับ</h1><span className="rounded-full bg-muted px-3 py-1 text-sm">ขั้นตอน {step + 1}/{steps.length}</span></div><div className="mt-3 grid gap-2 sm:grid-cols-5">{steps.map(([title, description], index) => <div key={title} className={`rounded-lg border p-2 text-xs ${index === step ? "border-primary bg-indigo-50 text-indigo-700" : index < step ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}><strong>{index + 1}. {title}</strong><span className="mt-1 block">{description}</span></div>)}</div></CardHeader><CardContent>
           {submitError ? <Alert className="border-red-200 bg-red-50 text-red-700"><AlertDescription>{submitError}</AlertDescription></Alert> : null}
           {step === 0 ? <BasicInfoStep /> : null}
           {step === 1 ? <SmivStep /> : null}

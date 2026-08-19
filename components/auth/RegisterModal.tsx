@@ -18,7 +18,7 @@ const selectClass = "flex h-10 w-full rounded-md border border-input bg-backgrou
 export default function RegisterModal({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState(initialState);
   const [pending, startTransition] = useTransition();
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormValues>({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { prefix: "", firstName: "", lastName: "", username: "", password: "", confirmPassword: "" },
   });
@@ -32,7 +32,13 @@ export default function RegisterModal({ onClose }: { onClose: () => void }) {
   function submit(values: RegisterFormValues) {
     const formData = new FormData();
     for (const [key, value] of Object.entries(values)) formData.set(key, value);
-    startTransition(async () => setState(await registerAction(initialState, formData)));
+    startTransition(async () => {
+      const nextState = await registerAction(initialState, formData);
+      setState(nextState);
+      if (nextState.status === "success") {
+        reset();
+      }
+    });
   }
 
   const fieldError = (name: keyof RegisterFormValues) => errors[name]

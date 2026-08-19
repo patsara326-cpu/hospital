@@ -74,12 +74,29 @@ export async function loginAction(
   }
 
   const { data: role, error: roleError } = await supabase.rpc("current_app_role");
-  if (!roleError && role === "pending") {
+  if (roleError) {
+    await supabase.auth.signOut();
+    return {
+      status: "error",
+      message: "ไม่สามารถตรวจสอบสิทธิ์ผู้ใช้งานได้ กรุณาติดต่อผู้ดูแลระบบ",
+    };
+  }
+  if (role === "pending") {
     await supabase.auth.signOut();
     return {
       status: "error",
       message: "บัญชียังไม่ได้รับอนุมัติสิทธิ์จากผู้ดูแลระบบ",
     };
+  }
+
+  const { error: activityError } = await supabase.rpc("record_app_activity", {
+    p_event_type: "auth.login",
+    p_metadata: {},
+  });
+  if (activityError) {
+    // Supabase Auth retains the authoritative authentication event. The app
+    // activity mirror must not lock a valid user out when it is unavailable.
+    console.error("Login activity mirror failed", activityError.code ?? "unknown");
   }
 
   redirect("/dashboard");
@@ -166,6 +183,14 @@ export async function registerAction(
 export async function logoutAction() {
   const supabase = await createSupabaseServerClient();
   if (supabase) {
+    const { error: activityError } = await supabase.rpc("record_app_activity", {
+      p_event_type: "auth.logout",
+      p_metadata: {},
+    });
+    if (activityError) {
+      // Logging must never prevent a user from ending their session.
+      console.error("Logout activity mirror failed", activityError.code ?? "unknown");
+    }
     await supabase.auth.signOut();
   }
 

@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 
 import { FilterSelect, StatisticsPage } from "@/components/statistics/StatisticsPage";
-import { STATISTIC_MONTHS } from "@/lib/constants/statistics";
+import {
+  matchesStatisticSmiFilter,
+  STATISTIC_MONTHS,
+  STATISTIC_SMI_OPTIONS,
+} from "@/lib/constants/statistics";
 import { downloadExcelFile } from "@/lib/utils/export";
 import { getThailandDateParts } from "@/lib/utils/date";
 
@@ -26,6 +30,7 @@ export default function IncidentStatistics({ initialRows, error }: Props) {
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
   const [gender, setGender] = useState("");
+  const [smiv, setSmiv] = useState("");
 
   const years = useMemo(
     () =>
@@ -48,13 +53,15 @@ export default function IncidentStatistics({ initialRows, error }: Props) {
         if (month && (!date || date.month !== Number(month))) return false;
         if (year && (!date || date.year + 543 !== Number(year))) return false;
         if (gender && row.gender !== gender) return false;
+        if (!matchesStatisticSmiFilter(row.smi_type, smiv)) return false;
         return true;
       }),
-    [gender, initialRows, month, year],
+    [gender, initialRows, month, smiv, year],
   );
 
-  function exportAsExcel() {
-    downloadExcelFile({
+  async function exportAsExcel() {
+    await downloadExcelFile({
+      reportType: "incidents",
       filename: "สถิติผู้ป่วยอุบัติการณ์_IOR.xlsx",
       sheetName: "สถิติอุบัติการณ์ IOR",
       headers: ["HN", "ชื่อ-สกุล", "SMIV type", "Level"],
@@ -64,6 +71,12 @@ export default function IncidentStatistics({ initialRows, error }: Props) {
         row.smi_type || "-",
         row.level || "-",
       ]),
+      filters: {
+        gender,
+        month,
+        year,
+        smi_filter: smiv,
+      },
     });
   }
 
@@ -85,6 +98,9 @@ export default function IncidentStatistics({ initialRows, error }: Props) {
           <FilterSelect label="หอผู้ป่วย" value={gender} onChange={setGender}>
             <option value="ชาย">ชาย</option>
             <option value="หญิง">หญิง</option>
+          </FilterSelect>
+          <FilterSelect label="ประเภทผู้ป่วย (SMI-V)" value={smiv} onChange={setSmiv}>
+            {STATISTIC_SMI_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </FilterSelect>
         </>
       }

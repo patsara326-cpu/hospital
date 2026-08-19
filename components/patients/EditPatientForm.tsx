@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { saveEditedPatientAction, searchPatientForEditAction } from "@/app/actions/patients";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { editPatientSchema, type EditPatientFormValues } from "@/lib/validation/edit-patient";
@@ -69,10 +69,11 @@ export default function EditPatientForm() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
       <Card className="rounded-3xl">
-        <CardHeader><p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">Edit Patient</p><CardTitle className="text-2xl md:text-3xl">แก้ไขข้อมูลผู้ป่วย</CardTitle></CardHeader>
+        <CardHeader><p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">Edit Patient</p><h1 className="text-2xl font-semibold leading-none tracking-tight md:text-3xl">แก้ไขข้อมูลผู้ป่วย</h1></CardHeader>
         <CardContent>
           <form className="flex flex-col gap-3 md:flex-row" onSubmit={(event) => { event.preventDefault(); void searchPatient(); }}>
-            <Input value={searchHn} onChange={(event) => { setSearchHn(event.target.value); setLoaded(false); }} placeholder="กรอกรหัส HN" />
+            <label htmlFor="edit-patient-hn-search" className="sr-only">ค้นหาผู้ป่วยด้วย HN</label>
+            <Input id="edit-patient-hn-search" value={searchHn} onChange={(event) => { setSearchHn(event.target.value); setLoaded(false); }} placeholder="กรอกรหัส HN" />
             <Button type="submit" disabled={loading}>{loading ? "กำลังค้นหา..." : "ค้นหา"}</Button>
           </form>
           {error ? <Alert className="mt-4 border-destructive/40 bg-destructive/10 text-destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}

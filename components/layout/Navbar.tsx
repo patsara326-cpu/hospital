@@ -12,6 +12,7 @@ type NavbarProps = {
   displayName: string;
   username: string;
   email: string | null;
+  role: string;
 };
 
 const registrationLinks = [
@@ -42,6 +43,7 @@ export default function Navbar({
   displayName,
   username,
   email,
+  role,
 }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<GroupKey | null>(null);
@@ -249,6 +251,15 @@ export default function Navbar({
               <div id="user-navigation-menu" className="absolute right-0 top-full z-50 mt-2 w-[min(15rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-3 text-slate-700 shadow-xl">
                 <p className="px-2 text-xs text-slate-500">{username || email}</p>
                 <p className="px-2 pb-3 pt-1 font-semibold">{displayName}</p>
+                {(role === "auditor" || role === "admin") && (
+                  <Link
+                    href="/admin/logs"
+                    onClick={closeNavigation}
+                    className="mb-2 flex w-full items-center rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+                  >
+                    ประวัติการใช้งาน
+                  </Link>
+                )}
                 <form action={logoutAction}>
                   <button
                     type="submit"

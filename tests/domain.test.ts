@@ -4,8 +4,13 @@ import test from "node:test";
 
 import { NON_SMIV_VALUE, OAS_CARE_CONTENT, OAS_OPTIONS, SMI_V_OPTIONS } from "../lib/constants/admission.ts";
 import {
+  matchesStatisticSmiFilter,
+  STATISTIC_SMI_OPTIONS,
+} from "../lib/constants/statistics.ts";
+import {
   formatDateBE,
   formatDateLongBE,
+  formatDateTimeBE,
   getThailandDateParts,
   todayISOInThailand,
 } from "../lib/utils/date.ts";
@@ -16,6 +21,7 @@ import { dischargeSchema } from "../lib/validation/discharge.ts";
 import { editPatientSchema } from "../lib/validation/edit-patient.ts";
 import { iorSchema } from "../lib/validation/ior.ts";
 import { newPatientDefaultValues, newPatientSchema } from "../lib/validation/new-patient.ts";
+import { reportExportSchema } from "../lib/validation/report-export.ts";
 
 test("calculateRisk preserves the legacy PHUA/G-HARD thresholds", () => {
   assert.equal(calculateRisk([]), "Mild");
@@ -23,6 +29,17 @@ test("calculateRisk preserves the legacy PHUA/G-HARD thresholds", () => {
   assert.equal(calculateRisk([5, 5, 3, 1]), "Severe");
   assert.equal(calculateRisk([5, 5, 5, 1]), "Critical");
   assert.equal(calculateRisk([7, 1, 1, 1]), "Critical");
+});
+
+test("statistics groups every SMI-V subtype into one filter", () => {
+  assert.deepEqual([...STATISTIC_SMI_OPTIONS], ["SMI-V", NON_SMIV_VALUE]);
+  for (const subtype of ["SMI-V 1", "SMI-V 2", "SMI-V 3", "SMI-V 4"]) {
+    assert.equal(matchesStatisticSmiFilter(subtype, "SMI-V"), true);
+    assert.equal(matchesStatisticSmiFilter(subtype, NON_SMIV_VALUE), false);
+  }
+  assert.equal(matchesStatisticSmiFilter(NON_SMIV_VALUE, "SMI-V"), false);
+  assert.equal(matchesStatisticSmiFilter(NON_SMIV_VALUE, NON_SMIV_VALUE), true);
+  assert.equal(matchesStatisticSmiFilter("", ""), true);
 });
 
 test("formatDateBE uses the Thai Buddhist Era and stable date-only parsing", () => {
@@ -35,6 +52,12 @@ test("formatDateBE uses the Thai Buddhist Era and stable date-only parsing", () 
 test("formatDateLongBE uses Thai month names and Buddhist Era", () => {
   assert.equal(formatDateLongBE("2024-01-02"), "2 มกราคม 2567");
   assert.equal(formatDateLongBE(undefined), "");
+});
+
+test("formatDateTimeBE renders a Bangkok timestamp in the Buddhist Era", () => {
+  const formatted = formatDateTimeBE("2024-01-01T18:30:00.000Z");
+  assert.match(formatted, /2567/);
+  assert.match(formatted, /01:30:00/);
 });
 
 test("Thailand date helpers cross the UTC day boundary consistently", () => {
@@ -130,10 +153,18 @@ test("clinical write schemas enforce conditional data before Server Actions", ()
 });
 
 test("Supabase hardening migration covers every sensitive table and atomic workflow", () => {
+  const baselineSql = readFileSync(
+    new URL("../supabase/migrations/20260819000100_baseline.sql", import.meta.url),
+    "utf8",
+  );
   const sql = readFileSync(
     new URL("../supabase/migrations/20260819000200_security_rpcs_and_views.sql", import.meta.url),
     "utf8",
   );
+
+  assert.match(baselineSql, /alter table public\.patients[\s\S]+add column if not exists id uuid/i);
+  assert.match(baselineSql, /add column if not exists raw_data jsonb/i);
+  assert.match(baselineSql, /alter table public\.assessments[\s\S]+add column if not exists phua_risk text/i);
 
   for (const table of ["users", "patients", "assessments", "backup", "ior_records", "audit_log"]) {
     assert.match(sql, new RegExp(`alter table public\\.${table} enable row level security`, "i"));
@@ -144,4 +175,45 @@ test("Supabase hardening migration covers every sensitive table and atomic workf
   assert.match(sql, /create or replace view public\.ior_statistics/i);
   assert.match(sql, /revoke all on function[\s\S]+from public, anon/i);
   assert.match(sql, /set search_path = ''/i);
+});
+
+test("report export validation permits only bounded, safe workbook payloads", () => {
+  assert.equal(reportExportSchema.safeParse({
+    reportType: "admission",
+    filename: "admission.xlsx",
+    sheetName: "Admission",
+    headers: ["HN"],
+    rows: [["QA-001"]],
+    filters: { gender: "male", year: "2569" },
+  }).success, true);
+  assert.equal(reportExportSchema.safeParse({
+    reportType: "admission",
+    filename: "../patient-data.xlsx",
+    sheetName: "Admission",
+    headers: ["HN"],
+    rows: [["QA-001", "extra"]],
+    filters: {},
+  }).success, false);
+});
+
+test("activity logging migration is append-only and removes PHI snapshots", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260819000300_activity_logging.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(sql, /create table if not exists public\.activity_log/i);
+  assert.match(sql, /alter table public\.activity_log enable row level security/i);
+  assert.match(sql, /create or replace function public\.record_app_activity/i);
+  assert.match(sql, /revoke all on public\.activity_log from public, anon, authenticated/i);
+  assert.match(sql, /drop column if exists old_data[\s\S]+drop column if exists new_data/i);
+  assert.match(sql, /changed_fields text\[\]/i);
+  assert.match(sql, /unsupported_export_metadata_key/i);
+
+  const triggerFix = readFileSync(
+    new URL("../supabase/migrations/20260819000400_fix_activity_trigger_record_type.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(triggerFix, /v_new ->> 'record_type'/i);
+  assert.doesNotMatch(triggerFix, /new\.record_type/i);
 });

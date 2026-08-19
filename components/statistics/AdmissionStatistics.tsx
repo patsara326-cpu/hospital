@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 
 import { FilterSelect, StatisticsPage } from "@/components/statistics/StatisticsPage";
-import { STATISTIC_MONTHS, STATISTIC_RESIDENCE_OPTIONS, STATISTIC_SMI_OPTIONS } from "@/lib/constants/statistics";
+import {
+  matchesStatisticSmiFilter,
+  STATISTIC_MONTHS,
+  STATISTIC_RESIDENCE_OPTIONS,
+  STATISTIC_SMI_OPTIONS,
+} from "@/lib/constants/statistics";
 import { downloadExcelFile } from "@/lib/utils/export";
 import { formatDateBE, getThailandDateParts } from "@/lib/utils/date";
 
@@ -69,7 +74,7 @@ export default function AdmissionStatistics({
       if (month && (!date || date.month !== Number(month))) return false;
       if (year && (!date || date.year + 543 !== Number(year))) return false;
 
-      if (smiv && textValue(row, "smi_v_result") !== smiv) return false;
+      if (!matchesStatisticSmiFilter(textValue(row, "smi_v_result"), smiv)) return false;
 
       if (residence === "เร่ร่อน") {
         if (!textValue(row, "residence_type").includes("เร่ร่อน")) return false;
@@ -92,8 +97,9 @@ export default function AdmissionStatistics({
     textValue(row, "residence_details") || "-",
   ]);
 
-  function exportAsExcel() {
-    downloadExcelFile({
+  async function exportAsExcel() {
+    await downloadExcelFile({
+      reportType: "admission",
       filename: `สถิติผู้ป่วยรับใหม่${genderLabel}.xlsx`,
       sheetName: `รับใหม่${genderLabel}`,
       headers: [
@@ -107,6 +113,13 @@ export default function AdmissionStatistics({
         "ที่อยู่",
       ],
       rows: exportRows,
+      filters: {
+        gender: genderLabel,
+        month,
+        year,
+        smi_filter: smiv,
+        residence_filter: residence,
+      },
     });
   }
 

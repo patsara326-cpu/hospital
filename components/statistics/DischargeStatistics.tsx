@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 
 import { FilterSelect, StatisticsPage } from "@/components/statistics/StatisticsPage";
-import { STATISTIC_MONTHS, STATISTIC_RESIDENCE_OPTIONS, STATISTIC_SMI_OPTIONS } from "@/lib/constants/statistics";
+import {
+  matchesStatisticSmiFilter,
+  STATISTIC_MONTHS,
+  STATISTIC_RESIDENCE_OPTIONS,
+  STATISTIC_SMI_OPTIONS,
+} from "@/lib/constants/statistics";
 import { downloadExcelFile } from "@/lib/utils/export";
 import { formatDateBE, getThailandDateParts } from "@/lib/utils/date";
 
@@ -74,7 +79,7 @@ export default function DischargeStatistics({
         if ((month || year) && !date) return false;
         if (month && (!date || date.month !== Number(month))) return false;
         if (year && (!date || date.year + 543 !== Number(year))) return false;
-        if (smiv && row.smi_type !== smiv) return false;
+        if (!matchesStatisticSmiFilter(row.smi_type, smiv)) return false;
 
         if (residence === "เร่ร่อน") {
           if (!rawText(row, "residence_type").includes("เร่ร่อน")) return false;
@@ -99,8 +104,9 @@ export default function DischargeStatistics({
     rawText(row, "residence_details") || "-",
   ]);
 
-  function exportAsExcel() {
-    downloadExcelFile({
+  async function exportAsExcel() {
+    await downloadExcelFile({
+      reportType: "discharge",
       filename: `สถิติผู้ป่วยจำหน่าย${genderLabel}.xlsx`,
       sheetName: `จำหน่าย${genderLabel}`,
       headers: [
@@ -115,6 +121,13 @@ export default function DischargeStatistics({
         "ที่อยู่",
       ],
       rows: exportRows,
+      filters: {
+        gender: genderLabel,
+        month,
+        year,
+        smi_filter: smiv,
+        residence_filter: residence,
+      },
     });
   }
 

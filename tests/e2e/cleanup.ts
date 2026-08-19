@@ -18,14 +18,19 @@ export async function cleanupSyntheticPatient(env: Phase5Env, hn: string) {
     if (error) throw new Error(`Cleanup ${table} failed: ${error.message}`);
   }
 
+  const { error: activityError } = await supabase
+    .from("activity_log")
+    .delete()
+    .or(`target_ref.eq.${hn},actor_username.eq.${env.E2E_USERNAME}`);
+  if (activityError) throw new Error(`Cleanup activity_log failed: ${activityError.message}`);
+
   const { data: auditRows, error: auditReadError } = await supabase
     .from("audit_log")
-    .select("id,old_data,new_data");
+    .select("id,record_ref")
+    .eq("record_ref", hn);
   if (auditReadError) throw new Error(`Cleanup audit lookup failed: ${auditReadError.message}`);
 
-  const auditIds = (auditRows ?? [])
-    .filter((row) => row.old_data?.hn === hn || row.new_data?.hn === hn)
-    .map((row) => row.id);
+  const auditIds = (auditRows ?? []).map((row) => row.id);
   if (auditIds.length) {
     const { error } = await supabase.from("audit_log").delete().in("id", auditIds);
     if (error) throw new Error(`Cleanup audit_log failed: ${error.message}`);

@@ -110,7 +110,11 @@ export default function DischargeForm() {
             void searchPatient();
           }}
         >
+          <label htmlFor="discharge-patient-hn-search" className="sr-only">
+            ค้นหาผู้ป่วยด้วย HN
+          </label>
           <Input
+            id="discharge-patient-hn-search"
             {...register("hn", { onChange: () => setPatient(null) })}
             placeholder="กรอกรหัส HN"
             className={`${inputClass} mt-0`}

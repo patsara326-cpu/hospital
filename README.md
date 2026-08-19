@@ -12,6 +12,7 @@ assessment, discharge, IOR, IPD, dashboard, history, and statistics application.
 - [x] Standardize date-only values to `Asia/Bangkok` and display Thai Buddhist Era dates.
 - [x] Add reproducible Supabase baseline and hardening migrations.
 - [x] Add RLS role design (`pending`, `clinician`, `auditor`, `admin`) and audit logging.
+- [x] Add privacy-minimized login/logout, clinical action, and Excel export activity logs.
 - [x] Add atomic RPCs for registration, edit, and discharge workflows.
 - [x] Add the `ior_statistics` view with an application fallback until migration deployment.
 - [x] Restrict IPD lists to current rows in `patients`.
@@ -19,15 +20,30 @@ assessment, discharge, IOR, IPD, dashboard, history, and statistics application.
 - [x] Use self-hosted Sarabun/Kanit through `next/font/local`.
 - [x] Upgrade SheetJS to vendored 0.20.3; production dependency audit is clean.
 - [x] Pass unit tests, TypeScript, lint, production build, and unauthenticated browser smoke tests.
-- [ ] Apply migrations to a staging Supabase project and run the security checklist.
-- [ ] Generate `types/database.types.ts` from that remote schema with Supabase CLI access.
-- [ ] Run authenticated end-to-end tests for all clinical write and export flows.
+- [x] Apply migrations to the staging Supabase project and pass the role security checklist.
+- [x] Generate `types/database.types.ts` from the remote staging schema.
+- [x] Run authenticated end-to-end tests for all clinical write and export flows.
+- [x] Apply migrations `00100`-`00400` to production and verify data counts/RLS.
 - [ ] Rotate the legacy anon key after RLS is verified.
+- [ ] Enable managed production backups or PITR in Supabase.
 
 Database deployment and security steps are documented in
-[`supabase/README.md`](supabase/README.md). The application has compatibility fallbacks
-for the existing database, so the local code can be deployed alongside the old schema
-while staging migration validation is pending.
+[`supabase/README.md`](supabase/README.md). Staging and production were migrated and
+verified on 19 August 2026. Production currently has no managed physical backup or PITR;
+enable one before future destructive schema changes.
+
+### Activity and audit logging
+
+- Successful app login/logout, patient registration/update/discharge, shift assessment,
+  IOR save, and Excel export actions are recorded in `activity_log`.
+- Failed authentication remains in Supabase Auth audit logs and is not duplicated in
+  the application table.
+- `audit_log` stores the changed field names and minimum record reference only; it does
+  not store before/after patient row snapshots.
+- Only `auditor` and `admin` can read the log viewer at `/admin/logs`; direct client
+  inserts, updates, and deletes are denied.
+- No automatic log deletion policy is enabled until the hospital approves a retention
+  period.
 
 ## Quality commands
 

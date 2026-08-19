@@ -81,3 +81,18 @@ export function formatDateLongBE(value: string | Date | null | undefined, fallba
   if (!parts) return fallback;
   return `${parts.day} ${THAI_MONTHS[parts.month - 1]} ${parts.year + 543}`;
 }
+
+export function formatDateTimeBE(
+  value: string | Date | null | undefined,
+  fallback = "-",
+): string {
+  const date = value instanceof Date ? value : value ? new Date(value) : null;
+
+  if (!date || Number.isNaN(date.getTime())) return fallback;
+
+  return new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
+    dateStyle: "medium",
+    timeStyle: "medium",
+    timeZone: THAILAND_TIME_ZONE,
+  }).format(date);
+}

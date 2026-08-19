@@ -142,7 +142,7 @@ export default function HistorySearch() {
         <div className="mt-5">
           <label className="text-sm font-semibold text-slate-700">กรองประวัติ</label>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <select value={month} onChange={(event) => setMonth(event.target.value)} className="legacy-input sm:max-w-40">
+            <select aria-label="เดือนที่จำหน่าย" value={month} onChange={(event) => setMonth(event.target.value)} className="legacy-input sm:max-w-40">
               <option value="">ทุกเดือน</option>
               {MONTHS.map((label, index) => (
                 <option key={label} value={String(index + 1).padStart(2, "0")}>
@@ -150,7 +150,7 @@ export default function HistorySearch() {
                 </option>
               ))}
             </select>
-            <select value={year} onChange={(event) => setYear(event.target.value)} className="legacy-input sm:max-w-40">
+            <select aria-label="ปีที่จำหน่าย" value={year} onChange={(event) => setYear(event.target.value)} className="legacy-input sm:max-w-40">
               <option value="">ทุกปี</option>
               {[currentYear, currentYear + 1, currentYear + 2, currentYear + 3].map((value) => (
                 <option key={value} value={String(value)}>

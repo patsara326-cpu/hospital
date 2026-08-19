@@ -24,7 +24,7 @@ export default async function MainLayout({
   const username = user.email?.split("@")[0] ?? "";
   const { data: profile } = await supabase
     .from("users")
-    .select("prefix, first_name, last_name, username")
+    .select("prefix, first_name, last_name, username, role")
     .eq("username", username)
     .maybeSingle();
   const displayName = profile
@@ -39,6 +39,7 @@ export default async function MainLayout({
         displayName={displayName}
         username={username}
         email={user.email ?? null}
+        role={profile?.role ?? "pending"}
       />
       <main>{children}</main>
     </div>

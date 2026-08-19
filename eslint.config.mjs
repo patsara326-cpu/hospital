@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "hospital/**",
     "ref/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

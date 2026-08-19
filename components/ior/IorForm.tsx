@@ -7,7 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { searchIorPatientAction, saveIorRecordAction, type IorPatient } from "@/app/actions/ior";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IOR_BEHAVIORS, IOR_LEVELS } from "@/lib/constants/ior";
@@ -71,11 +71,11 @@ export default function IorForm() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
       <Card className="rounded-3xl">
-        <CardHeader><p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">IOR</p><CardTitle className="text-3xl">บันทึก IOR</CardTitle></CardHeader>
+        <CardHeader><p className="text-sm font-medium uppercase tracking-[0.2em] text-indigo-600">IOR</p><h1 className="text-3xl font-semibold leading-none tracking-tight">บันทึก IOR</h1></CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(saveRecord)} noValidate>
             <div className="flex gap-3">
-              <div className="w-full"><Input placeholder="กรอกรหัส HN" aria-invalid={Boolean(errors.hn)} {...register("hn", { onChange: () => setPatient(null) })} /><p className="mt-1 text-sm text-destructive">{errors.hn?.message}</p></div>
+              <div className="w-full"><Label htmlFor="ior-patient-hn-search" className="sr-only">ค้นหาผู้ป่วยด้วย HN</Label><Input id="ior-patient-hn-search" placeholder="กรอกรหัส HN" aria-invalid={Boolean(errors.hn)} {...register("hn", { onChange: () => setPatient(null) })} /><p className="mt-1 text-sm text-destructive">{errors.hn?.message}</p></div>
               <Button type="button" onClick={searchPatient} disabled={loading}>{loading ? "กำลังค้นหา..." : "ค้นหา"}</Button>
             </div>
             {serverError ? <Alert className="mt-4 border-destructive/40 bg-destructive/10 text-destructive"><AlertDescription>{serverError}</AlertDescription></Alert> : null}
