@@ -133,6 +133,7 @@ main {
   .legacy-brand {
     @apply bg-gradient-to-r from-white to-slate-300 bg-clip-text text-xl font-semibold tracking-[0.08em] text-transparent;
     font-family: var(--font-kanit), var(--font-sarabun), sans-serif;
+    min-width: 0;
   }
 
   .legacy-nav {
@@ -205,7 +206,8 @@ main {
   }
 
   .group:hover .legacy-dropdown,
-  .group:focus-within .legacy-dropdown {
+  .group:focus-within .legacy-dropdown,
+  .legacy-nav-group.legacy-group-open > .legacy-dropdown {
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
@@ -270,7 +272,7 @@ main {
   }
 
   .legacy-user-badge {
-    @apply rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90;
+    @apply flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90;
     font-family: var(--font-sarabun), "Segoe UI", sans-serif;
   }
 
@@ -284,21 +286,55 @@ main {
     min-height: 60px;
   }
 
+  .legacy-navbar.legacy-navbar-mobile-open {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    pointer-events: none;
+  }
+
+  .legacy-navbar-mobile-open .legacy-brand,
+  .legacy-navbar-mobile-open .legacy-user-menu {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   .legacy-menu-toggle {
-    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-2xl text-white/90 transition hover:bg-white/10;
+    @apply relative z-[80] inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80;
     border: 0;
     background: transparent;
     cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .legacy-menu-toggle svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .legacy-brand {
+    @apply flex-1 truncate text-base tracking-[0.04em];
   }
 
   .legacy-nav {
     @apply fixed left-0 top-0 z-[70] h-dvh w-[min(300px,85vw)] flex-col items-stretch gap-2 overflow-y-auto bg-indigo-950 px-4 pb-8 pt-20 shadow-2xl transition-transform duration-300;
     flex-wrap: nowrap;
     transform: translateX(-105%);
+    visibility: hidden;
+    pointer-events: none;
+    overscroll-behavior: contain;
   }
 
   .legacy-nav.legacy-nav-open {
     transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .legacy-nav:focus {
+    outline: none;
   }
 
   .legacy-nav-item,
@@ -364,12 +400,12 @@ main {
   }
 
   .legacy-menu-scrim {
-    @apply fixed inset-0 z-[60] block cursor-default bg-slate-950/50 backdrop-blur-[2px];
+    @apply fixed inset-0 z-[40] block cursor-default bg-slate-950/50 backdrop-blur-[2px];
     border: 0;
   }
 
   .legacy-user-badge {
-    @apply max-w-[10rem] truncate px-3 py-2 text-xs;
+    @apply max-w-24 px-2.5 py-2 text-xs sm:max-w-[10rem] sm:px-3;
   }
 }
 

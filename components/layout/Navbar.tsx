@@ -1,8 +1,9 @@
 "use client";
 
 import { logoutAction } from "@/app/actions/auth";
+import { ChevronDown, ChevronRight, Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type GroupKey = "registration" | "records" | "statistics";
 type SubgroupKey = "male-statistics" | "female-statistics";
@@ -46,11 +47,48 @@ export default function Navbar({
   const [openGroup, setOpenGroup] = useState<GroupKey | null>(null);
   const [openSubgroup, setOpenSubgroup] = useState<SubgroupKey | null>(null);
   const [userOpen, setUserOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const navigationRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const mobileViewport = window.matchMedia("(max-width: 767px)");
+    if (!mobileViewport.matches) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    navigationRef.current?.focus();
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setMobileOpen(false);
+      setOpenGroup(null);
+      setOpenSubgroup(null);
+      menuButtonRef.current?.focus();
+    }
+
+    function closeWhenDesktop(event: MediaQueryListEvent) {
+      if (event.matches) return;
+      setMobileOpen(false);
+      setOpenGroup(null);
+      setOpenSubgroup(null);
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    mobileViewport.addEventListener("change", closeWhenDesktop);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+      mobileViewport.removeEventListener("change", closeWhenDesktop);
+    };
+  }, [mobileOpen]);
 
   function closeNavigation() {
     setMobileOpen(false);
     setOpenGroup(null);
     setOpenSubgroup(null);
+    setUserOpen(false);
   }
 
   function toggleGroup(group: GroupKey) {
@@ -62,19 +100,25 @@ export default function Navbar({
     setOpenSubgroup((current) => (current === group ? null : group));
   }
 
+  function toggleMobileNavigation() {
+    setUserOpen(false);
+    setMobileOpen((current) => !current);
+  }
+
   return (
     <>
-      <header className="legacy-navbar">
+      <header className={`legacy-navbar ${mobileOpen ? "legacy-navbar-mobile-open" : ""}`}>
         <div className="legacy-navbar-inner mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 md:px-6">
           <button
+            ref={menuButtonRef}
             type="button"
             className="legacy-menu-toggle"
             aria-label={mobileOpen ? "ปิดเมนู" : "เปิดเมนู"}
             aria-expanded={mobileOpen}
             aria-controls="main-navigation"
-            onClick={() => setMobileOpen((current) => !current)}
+            onClick={toggleMobileNavigation}
           >
-            <span aria-hidden="true">{mobileOpen ? "×" : "☰"}</span>
+            {mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
 
           <Link href="/dashboard" className="legacy-brand" onClick={closeNavigation}>
@@ -82,9 +126,11 @@ export default function Navbar({
           </Link>
 
           <nav
+            ref={navigationRef}
             id="main-navigation"
             className={`legacy-nav ${mobileOpen ? "legacy-nav-open" : ""}`}
             aria-label="เมนูหลัก"
+            tabIndex={-1}
           >
             <Link href="/dashboard" className="legacy-nav-item" onClick={closeNavigation}>
               หน้าหลัก
@@ -97,7 +143,7 @@ export default function Navbar({
                 aria-expanded={openGroup === "registration"}
                 onClick={() => toggleGroup("registration")}
               >
-                ลงทะเบียน <span aria-hidden="true">⌄</span>
+                ลงทะเบียน <ChevronDown aria-hidden="true" className="size-4" />
               </button>
               <div className="legacy-dropdown">
                 {registrationLinks.map(([label, href]) => (
@@ -119,7 +165,7 @@ export default function Navbar({
                 aria-expanded={openGroup === "records"}
                 onClick={() => toggleGroup("records")}
               >
-                บันทึกข้อมูล <span aria-hidden="true">⌄</span>
+                บันทึกข้อมูล <ChevronDown aria-hidden="true" className="size-4" />
               </button>
               <div className="legacy-dropdown">
                 {recordLinks.map(([label, href]) => (
@@ -137,7 +183,7 @@ export default function Navbar({
                 aria-expanded={openGroup === "statistics"}
                 onClick={() => toggleGroup("statistics")}
               >
-                สถิติ <span aria-hidden="true">⌄</span>
+                สถิติ <ChevronDown aria-hidden="true" className="size-4" />
               </button>
               <div className="legacy-dropdown legacy-dropdown-wide">
                 <div className={`legacy-subgroup ${openSubgroup === "male-statistics" ? "legacy-subgroup-open" : ""}`}>
@@ -147,7 +193,7 @@ export default function Navbar({
                     aria-expanded={openSubgroup === "male-statistics"}
                     onClick={() => toggleSubgroup("male-statistics")}
                   >
-                    สถิติผู้ป่วยชาย <span aria-hidden="true">›</span>
+                    สถิติผู้ป่วยชาย <ChevronRight aria-hidden="true" className="size-4" />
                   </button>
                   <div className="legacy-submenu">
                     {statisticLinks.male.map(([label, href]) => (
@@ -165,7 +211,7 @@ export default function Navbar({
                     aria-expanded={openSubgroup === "female-statistics"}
                     onClick={() => toggleSubgroup("female-statistics")}
                   >
-                    สถิติผู้ป่วยหญิง <span aria-hidden="true">›</span>
+                    สถิติผู้ป่วยหญิง <ChevronRight aria-hidden="true" className="size-4" />
                   </button>
                   <div className="legacy-submenu">
                     {statisticLinks.female.map(([label, href]) => (
@@ -183,17 +229,24 @@ export default function Navbar({
             </div>
           </nav>
 
-          <div className="relative ml-auto">
+          <div className="legacy-user-menu relative ml-auto shrink-0">
             <button
               type="button"
               className="legacy-user-badge cursor-pointer"
               aria-expanded={userOpen}
-              onClick={() => setUserOpen((current) => !current)}
+              aria-controls="user-navigation-menu"
+              onClick={() => {
+                setMobileOpen(false);
+                setOpenGroup(null);
+                setOpenSubgroup(null);
+                setUserOpen((current) => !current);
+              }}
             >
-              {displayName} <span aria-hidden="true">⌄</span>
+              <span className="truncate">{displayName}</span>
+              <ChevronDown aria-hidden="true" className="size-3.5 shrink-0" />
             </button>
             {userOpen ? (
-              <div className="absolute right-0 top-full z-50 mt-2 w-60 rounded-xl border border-slate-200 bg-white p-3 text-slate-700 shadow-xl">
+              <div id="user-navigation-menu" className="absolute right-0 top-full z-50 mt-2 w-[min(15rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-3 text-slate-700 shadow-xl">
                 <p className="px-2 text-xs text-slate-500">{username || email}</p>
                 <p className="px-2 pb-3 pt-1 font-semibold">{displayName}</p>
                 <form action={logoutAction}>
@@ -215,6 +268,7 @@ export default function Navbar({
           type="button"
           className="legacy-menu-scrim"
           aria-label="ปิดเมนู"
+          tabIndex={-1}
           onClick={closeNavigation}
         />
       ) : null}
