@@ -168,6 +168,16 @@ async function assertReadMatrix(sessions: RoleSession[], sentinelHn: string) {
       canReadAudit ? (activityResult.data?.length ?? 0) > 0 : activityResult.data?.length ?? 0,
       canReadAudit ? true : 0,
     );
+
+    const adminLogResult = await session.client
+      .from("admin_log_entries")
+      .select("entry_id")
+      .limit(1);
+    assert.equal(adminLogResult.error, null, `${session.role}: admin log view read error`);
+    assert.equal(
+      canReadAudit ? (adminLogResult.data?.length ?? 0) > 0 : adminLogResult.data?.length ?? 0,
+      canReadAudit ? true : 0,
+    );
   }
 }
 

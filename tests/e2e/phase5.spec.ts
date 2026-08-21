@@ -153,6 +153,11 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       await page.goto("/statistics/discharge/male");
       await page.getByLabel("ประเภทผู้ป่วย (SMI-V)").selectOption("SMI-V");
       await expect(page.getByRole("main").getByText(hn, { exact: true })).toBeVisible();
+      await page.goto("/statistics/incidents");
+      await page.getByLabel(/SMI-V/).selectOption("SMI-V");
+      const archivedIorRow = page.locator("tbody tr").filter({ hasText: hn });
+      await expect(archivedIorRow).toBeVisible();
+      await expect(archivedIorRow).toContainText("PhaseFive");
     });
   } finally {
     await cleanupSyntheticPatient(env, hn);

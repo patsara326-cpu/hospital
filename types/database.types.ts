@@ -335,6 +335,25 @@ export type Database = {
       }
     }
     Views: {
+      admin_log_entries: {
+        Row: {
+          actor_display_name: string | null
+          actor_role: string | null
+          actor_user_id: string | null
+          actor_username: string | null
+          changed_fields: string[] | null
+          entry_id: string | null
+          event_code: string | null
+          metadata: Json | null
+          occurred_at: string | null
+          search_text: string | null
+          source: string | null
+          target_ref: string | null
+          target_type: string | null
+          transaction_id: number | null
+        }
+        Relationships: []
+      }
       ior_statistics: {
         Row: {
           behaviors: Json | null

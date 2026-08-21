@@ -8,6 +8,11 @@ import {
   STATISTIC_SMI_OPTIONS,
 } from "../lib/constants/statistics.ts";
 import {
+  getActorLabel,
+  getChangedFieldDetails,
+  getEventLabel,
+} from "../lib/logs/event-labels.ts";
+import {
   formatDateBE,
   formatDateLongBE,
   formatDateTimeBE,
@@ -20,6 +25,10 @@ import { loginSchema, registerSchema } from "../lib/validation/auth.ts";
 import { dischargeSchema } from "../lib/validation/discharge.ts";
 import { editPatientSchema } from "../lib/validation/edit-patient.ts";
 import { iorSchema } from "../lib/validation/ior.ts";
+import {
+  logFilterSchema,
+  resolveLogTimeRange,
+} from "../lib/validation/log-filter.ts";
 import { newPatientDefaultValues, newPatientSchema } from "../lib/validation/new-patient.ts";
 import { reportExportSchema } from "../lib/validation/report-export.ts";
 
@@ -112,8 +121,8 @@ test("new patient schema enforces conditional OAS and admission fields", () => {
   }
 });
 
-test("new patient schema preserves the legacy homeless short flow", () => {
-  const result = newPatientSchema.safeParse({
+test("new patient schema requires shared caregiver and admission fields for every residence type", () => {
+  const incomplete = newPatientSchema.safeParse({
     ...newPatientDefaultValues,
     firstName: "สมหญิง",
     lastName: "ทดลอง",
@@ -124,7 +133,33 @@ test("new patient schema preserves the legacy homeless short flow", () => {
     residenceType: "ไม่มีที่อยู่เป็นหลักแหล่ง",
   });
 
-  assert.equal(result.success, true);
+  assert.equal(incomplete.success, false);
+  if (!incomplete.success) {
+    const fields = incomplete.error.flatten().fieldErrors;
+    assert.ok(fields.caregiverStatus?.length);
+    assert.ok(fields.diagnosis?.length);
+    assert.ok(fields.admissionSource?.length);
+    assert.ok(fields.admittingDoctor?.length);
+    assert.equal(fields.residenceDistrict, undefined);
+  }
+
+  const complete = newPatientSchema.safeParse({
+    ...newPatientDefaultValues,
+    firstName: "สมหญิง",
+    lastName: "ทดลอง",
+    gender: "หญิง",
+    age: "29",
+    hn: "HN-101",
+    smiV: NON_SMIV_VALUE,
+    residenceType: "ไม่มีที่อยู่เป็นหลักแหล่ง",
+    caregiverStatus: "อยู่คนเดียว",
+    patientPhone: "0812345678",
+    diagnosis: "Schizophrenia",
+    admissionSource: "รับจาก ER",
+    admissionDate: "2026-08-21",
+    admittingDoctor: "แพทย์ทดสอบ",
+  });
+  assert.equal(complete.success, true);
 });
 
 test("clinical choices retain the detailed legacy SMI-V and OAS guidance", () => {
@@ -177,6 +212,21 @@ test("Supabase hardening migration covers every sensitive table and atomic workf
   assert.match(sql, /set search_path = ''/i);
 });
 
+test("IOR history survives discharge and resolves patient details from the matching archive", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260821000500_preserve_ior_on_discharge.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(sql, /drop constraint if exists ior_records_hn_fkey/i);
+  assert.doesNotMatch(sql, /on delete cascade/i);
+  assert.match(sql, /create or replace view public\.ior_statistics/i);
+  assert.match(sql, /left join lateral[\s\S]+from public\.backup/i);
+  assert.match(sql, /archived\.admit_date <= incident\.record_date/i);
+  assert.match(sql, /incident\.record_date <= archived\.discharge_date/i);
+  assert.match(sql, /coalesce\(active_patient\.full_name, archived_patient\.full_name\)/i);
+});
+
 test("report export validation permits only bounded, safe workbook payloads", () => {
   assert.equal(reportExportSchema.safeParse({
     reportType: "admission",
@@ -216,4 +266,51 @@ test("activity logging migration is append-only and removes PHI snapshots", () =
   );
   assert.match(triggerFix, /v_new ->> 'record_type'/i);
   assert.doesNotMatch(triggerFix, /new\.record_type/i);
+});
+
+test("admin log labels translate audit codes and staff identity for general users", () => {
+  assert.equal(getEventLabel("backup.insert", "audit"), "จำหน่ายผู้ป่วย (backup.insert)");
+  assert.equal(getEventLabel("patient.discharged", "activity"), "จำหน่ายผู้ป่วย");
+  assert.equal(getEventLabel("unknown.update", "audit"), "แก้ไขข้อมูล unknown (unknown.update)");
+  assert.equal(getActorLabel("นาย สมชาย ใจดี", "qa_clinician"), "นาย สมชาย ใจดี (@qa_clinician)");
+  assert.equal(getActorLabel(null, "former_user"), "@former_user");
+  assert.deepEqual(
+    getChangedFieldDetails(["discharge_date", "last_diagnosis"]),
+    ["ข้อมูลที่เปลี่ยน: วันที่จำหน่าย, การวินิจฉัยครั้งสุดท้าย"],
+  );
+});
+
+test("admin log time filters validate Bangkok custom ranges and rolling presets", () => {
+  assert.equal(logFilterSchema.safeParse({
+    query: "",
+    source: "",
+    actorRole: "",
+    eventType: "",
+    preset: "custom",
+    from: "2026-08-21T12:00",
+    to: "2026-08-21T11:59",
+  }).success, false);
+
+  const now = new Date("2026-08-21T06:00:00.000Z");
+  assert.deepEqual(
+    resolveLogTimeRange({ preset: "3h", from: "", to: "" }, now),
+    { from: "2026-08-21T03:00:00.000Z", to: "2026-08-21T06:00:00.000Z" },
+  );
+  assert.deepEqual(
+    resolveLogTimeRange({ preset: "today", from: "", to: "" }, now),
+    { from: "2026-08-20T17:00:00.000Z", to: "2026-08-21T06:00:00.000Z" },
+  );
+});
+
+test("admin log view preserves RLS and resolves current staff names without copying clinical rows", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260821000600_admin_log_entries.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /create or replace view public\.admin_log_entries/i);
+  assert.match(sql, /with \(security_invoker = true\)/i);
+  assert.match(sql, /profile\.auth_user_id = activity\.actor_user_id/i);
+  assert.match(sql, /profile\.auth_user_id = audit\.changed_by/i);
+  assert.match(sql, /revoke all on public\.admin_log_entries from public, anon/i);
+  assert.doesNotMatch(sql, /old_data|new_data/i);
 });
