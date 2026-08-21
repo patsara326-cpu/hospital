@@ -96,10 +96,10 @@ const completeSmivPatient = {
   residenceDetails: "1/1 หมู่ 1",
   caregiverStatus: "อยู่คนเดียว",
   patientPhone: "0812345678",
-  diagnosis: "F20",
-  admissionSource: "ER",
+  diagnosis: "Schizophrenia",
+  admissionSource: "รับจาก ER",
   admissionDate: "2026-08-19",
-  admittingDoctor: "แพทย์ ก",
+  admittingDoctor: "พญ. บุญพร้อม เชษฐรตานนท์",
 };
 
 test("new patient schema accepts a complete SMI-V admission", () => {
@@ -130,7 +130,7 @@ test("new patient schema requires shared caregiver and admission fields for ever
     age: "29",
     hn: "HN-101",
     smiV: NON_SMIV_VALUE,
-    residenceType: "ไม่มีที่อยู่เป็นหลักแหล่ง",
+    residenceType: "เร่ร่อน/อยู่สถานสงเคราะห์",
   });
 
   assert.equal(incomplete.success, false);
@@ -151,13 +151,13 @@ test("new patient schema requires shared caregiver and admission fields for ever
     age: "29",
     hn: "HN-101",
     smiV: NON_SMIV_VALUE,
-    residenceType: "ไม่มีที่อยู่เป็นหลักแหล่ง",
+    residenceType: "เร่ร่อน/อยู่สถานสงเคราะห์",
     caregiverStatus: "อยู่คนเดียว",
     patientPhone: "0812345678",
     diagnosis: "Schizophrenia",
     admissionSource: "รับจาก ER",
     admissionDate: "2026-08-21",
-    admittingDoctor: "แพทย์ทดสอบ",
+    admittingDoctor: "พญ. บุญพร้อม เชษฐรตานนท์",
   });
   assert.equal(complete.success, true);
 });
@@ -179,12 +179,9 @@ test("clinical write schemas enforce conditional data before Server Actions", ()
   assert.equal(iorSchema.safeParse({ hn: "HN1", recordDate: "2026-08-19", behaviors: [], level: "B" }).success, false);
   assert.equal(dischargeSchema.safeParse({ hn: "HN1", dischargeMethod: "แพทย์อนุญาต", transferOther: "", dischargeDate: "2026-02-30", lastDiagnosis: "F20", dischargeType: "อนุญาตเยี่ยมบ้าน" }).success, false);
   assert.equal(assessmentSchema.safeParse({ hn: "HN1", assessDate: "2026-08-19", shift: "เวรเช้า", oasScore: "1", phuaScores: [1, 3, null, 7], ghardScores: [1, 1, 1, 1, 1] }).success, false);
-  assert.equal(editPatientSchema.safeParse({
-    hn: "HN1", prefix: "", first_name: "", last_name: "", full_name: "", gender: "ชาย", age: "151", is_smi_v: false,
-    diagnosis: "", smi_v_result: "", smi_type: "", substance_use: "", substance_type: "", patient_phone: "", admission_date: "",
-    admitting_doctor: "", caregiver_name: "", caregiver_relation: "", caregiver_phone: "", admission_source: "", residence_type: "",
-    residence_details: "", residence_district: "", residence_subdistrict: "", aggressive_behavior: "", oas_score: "", oas_risk_level: "",
-  }).success, false);
+  assert.equal(editPatientSchema.safeParse({ ...completeSmivPatient, age: "151" }).success, false);
+  assert.equal(editPatientSchema.safeParse({ ...completeSmivPatient, diagnosis: "ค่าที่ไม่มีในตัวเลือก" }).success, false);
+  assert.equal(editPatientSchema.safeParse(completeSmivPatient).success, true);
 });
 
 test("Supabase hardening migration covers every sensitive table and atomic workflow", () => {
