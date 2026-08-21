@@ -24,7 +24,7 @@ export type HistoryState = {
   error: string | null;
 };
 
-export const initialHistoryState: HistoryState = {
+const initialHistoryState: HistoryState = {
   searchedHn: "",
   patient: null,
   history: [],

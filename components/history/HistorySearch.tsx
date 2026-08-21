@@ -1,9 +1,9 @@
 "use client";
 
 import {
-  initialHistoryState,
   searchBackupHistory,
   type BackupHistoryRow,
+  type HistoryState,
 } from "@/app/actions/history";
 import { formatDateBE, getThailandDateParts } from "@/lib/utils/date";
 import { useActionState, useMemo, useState } from "react";
@@ -22,6 +22,13 @@ const MONTHS = [
   "พ.ย.",
   "ธ.ค.",
 ];
+
+const initialHistoryState: HistoryState = {
+  searchedHn: "",
+  patient: null,
+  history: [],
+  error: null,
+};
 
 function rawString(rawData: Record<string, unknown> | null, keys: string[]) {
   for (const key of keys) {
