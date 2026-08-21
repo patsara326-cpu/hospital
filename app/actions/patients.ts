@@ -2,13 +2,31 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  ADMISSION_SOURCE_OPTIONS,
+  ADMITTING_DOCTOR_OPTIONS,
+  CAREGIVER_RELATION_OPTIONS,
+  CAREGIVER_STATUS_OPTIONS,
+  DIAGNOSIS_OPTIONS,
+  NON_SMIV_VALUE,
+  RESIDENCE_DISTRICT_OPTIONS,
+  RESIDENCE_TYPE_OPTIONS,
+  SMI_V_OPTIONS,
+  SUBSTANCE_TYPE_OPTIONS,
+  SUBSTANCE_USE_OPTIONS,
+  YES_NO_OPTIONS,
+} from "@/lib/constants/admission";
+import {
   newPatientInputFromFormData,
   newPatientSchema,
   type NewPatientFormValues,
 } from "@/lib/validation/new-patient";
 import { todayISOInThailand } from "@/lib/utils/date";
 import { dischargeSchema } from "@/lib/validation/discharge";
-import { editPatientSchema } from "@/lib/validation/edit-patient";
+import {
+  editPatientDefaultValues,
+  editPatientSchema,
+  type EditPatientFormValues,
+} from "@/lib/validation/edit-patient";
 import type { Json } from "@/types/database.types";
 
 export type SavePatientState = {
@@ -29,35 +47,7 @@ export type SaveNewPatientState = SavePatientState & {
   fieldErrors?: Partial<Record<keyof NewPatientFormValues, string[]>>;
 };
 
-export type EditPatientForm = {
-  hn: string;
-  prefix: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  gender: string;
-  age: string;
-  is_smi_v: boolean;
-  diagnosis: string;
-  smi_v_result: string;
-  smi_type: string;
-  substance_use: string;
-  substance_type: string;
-  patient_phone: string;
-  admission_date: string;
-  admitting_doctor: string;
-  caregiver_name: string;
-  caregiver_relation: string;
-  caregiver_phone: string;
-  admission_source: string;
-  residence_type: string;
-  residence_details: string;
-  residence_district: string;
-  residence_subdistrict: string;
-  aggressive_behavior: string;
-  oas_score: string;
-  oas_risk_level: string;
-};
+export type EditPatientForm = EditPatientFormValues;
 
 export type EditPatientState = {
   form: EditPatientForm | null;
@@ -67,12 +57,7 @@ export type EditPatientState = {
 };
 
 const emptyEditPatientForm: EditPatientForm = {
-  hn: "", prefix: "", first_name: "", last_name: "", full_name: "", gender: "", age: "",
-  is_smi_v: false, diagnosis: "", smi_v_result: "", smi_type: "", substance_use: "",
-  substance_type: "", patient_phone: "", admission_date: "", admitting_doctor: "",
-  caregiver_name: "", caregiver_relation: "", caregiver_phone: "", admission_source: "",
-  residence_type: "", residence_details: "", residence_district: "", residence_subdistrict: "",
-  aggressive_behavior: "", oas_score: "", oas_risk_level: "",
+  ...editPatientDefaultValues,
 };
 
 function readRecordText(record: Record<string, unknown>, key: string): string {
@@ -112,36 +97,69 @@ async function getAuthorizedSupabase() {
   return { supabase, error: "" };
 }
 
+function allowedValue(value: string, options: readonly string[]): string {
+  return options.includes(value) ? value : "";
+}
+
 function editFormFromRaw(rawData: Record<string, unknown>, hn: string, fallback: Record<string, unknown> = {}): EditPatientForm {
   const value = (key: string, fallbackKey = key) => readRecordText(rawData, key) || readRecordText(fallback, fallbackKey);
+  const fullName = value("full_name");
+  const fullNameParts = fullName.split(/\s+/).filter(Boolean);
+  const diagnosisValue = value("diagnosis");
+  const caregiverRelationValue = value("caregiver_relation");
+  const residenceTypeValue = value("residence_type");
+  const residenceDistrict = allowedValue(value("residence_district"), RESIDENCE_DISTRICT_OPTIONS);
+  const residenceSubdistrict = value("residence_subdistrict");
+  const smiV = allowedValue(value("smi_v_result") || value("smi_type"), SMI_V_OPTIONS.map((option) => option.value));
+  const admissionAliases: Record<string, string> = {
+    ER: "รับจาก ER",
+    OPD: "รับจาก OPD",
+    transfer: "รับย้าย",
+  };
+  const admissionValue = value("admission_source");
+  const caregiverStatusValue = value("caregiver_status")
+    || (value("caregiver_name") ? "มีผู้ดูแลหลัก" : value("patient_phone") ? "อยู่คนเดียว" : "");
   return {
     hn,
-    prefix: value("prefix"),
-    first_name: value("first_name"),
-    last_name: value("last_name"),
-    full_name: value("full_name") || `${value("first_name")} ${value("last_name")}`.trim(),
+    firstName: value("first_name") || fullNameParts[0] || "",
+    lastName: value("last_name") || fullNameParts.slice(1).join(" "),
     gender: value("gender"),
     age: value("age"),
-    is_smi_v: rawData.is_smi_v === true || value("is_smi_v").toLowerCase() === "true",
-    diagnosis: value("diagnosis"),
-    smi_v_result: value("smi_v_result"),
-    smi_type: value("smi_type") || value("smi_v_result"),
-    substance_use: value("substance_use") || value("substance"),
-    substance_type: value("substance_type"),
-    patient_phone: value("patient_phone"),
-    admission_date: value("admission_date") || value("admit_date"),
-    admitting_doctor: value("admitting_doctor"),
-    caregiver_name: value("caregiver_name"),
-    caregiver_relation: value("caregiver_relation"),
-    caregiver_phone: value("caregiver_phone"),
-    admission_source: value("admission_source"),
-    residence_type: value("residence_type"),
-    residence_details: value("residence_details"),
-    residence_district: value("residence_district"),
-    residence_subdistrict: value("residence_subdistrict"),
-    aggressive_behavior: value("aggressive_behavior"),
-    oas_score: value("oas_score"),
-    oas_risk_level: value("oas_risk_level") || value("oas_risk"),
+    smiV,
+    oasScore: allowedValue(value("oas_score"), ["1", "2", "3"]),
+    aggressiveBehavior: value("aggressive_behavior"),
+    substanceUse: allowedValue(value("substance_use") || value("substance"), SUBSTANCE_USE_OPTIONS),
+    substanceType: allowedValue(value("substance_type"), SUBSTANCE_TYPE_OPTIONS),
+    readmit28: allowedValue(value("readmit_28_days"), YES_NO_OPTIONS),
+    admit3times: allowedValue(value("admit_three_times"), YES_NO_OPTIONS),
+    admitNumber: value("admit_number"),
+    residenceType: allowedValue(
+      residenceTypeValue === "ไม่มีที่อยู่เป็นหลักแหล่ง" ? "เร่ร่อน/อยู่สถานสงเคราะห์" : residenceTypeValue,
+      RESIDENCE_TYPE_OPTIONS,
+    ),
+    residenceDistrict,
+    residenceSubdistrict: residenceDistrict === "ในเขตอำเภอเมืองชลบุรี" ? residenceSubdistrict : "",
+    residenceOtherDistrict: residenceDistrict === "นอกเขตอำเภอเมืองชลบุรี" ? residenceSubdistrict : "",
+    residenceDetails: value("residence_details"),
+    caregiverStatus: allowedValue(caregiverStatusValue, CAREGIVER_STATUS_OPTIONS),
+    caregiverName: value("caregiver_name"),
+    caregiverRelation: caregiverRelationValue && !CAREGIVER_RELATION_OPTIONS.includes(caregiverRelationValue as typeof CAREGIVER_RELATION_OPTIONS[number])
+      ? "อื่นๆ"
+      : allowedValue(caregiverRelationValue, CAREGIVER_RELATION_OPTIONS),
+    caregiverRelationOther: caregiverRelationValue && !CAREGIVER_RELATION_OPTIONS.includes(caregiverRelationValue as typeof CAREGIVER_RELATION_OPTIONS[number])
+      ? caregiverRelationValue
+      : "",
+    caregiverPhone: value("caregiver_phone"),
+    patientPhone: value("patient_phone"),
+    diagnosis: diagnosisValue && !DIAGNOSIS_OPTIONS.includes(diagnosisValue as typeof DIAGNOSIS_OPTIONS[number])
+      ? "อื่นๆ"
+      : allowedValue(diagnosisValue, DIAGNOSIS_OPTIONS),
+    diagnosisOther: diagnosisValue && !DIAGNOSIS_OPTIONS.includes(diagnosisValue as typeof DIAGNOSIS_OPTIONS[number])
+      ? diagnosisValue
+      : "",
+    admissionSource: allowedValue(admissionAliases[admissionValue] ?? admissionValue, ADMISSION_SOURCE_OPTIONS),
+    admissionDate: value("admission_date") || value("admit_date"),
+    admittingDoctor: allowedValue(value("admitting_doctor"), ADMITTING_DOCTOR_OPTIONS),
   };
 }
 
@@ -154,42 +172,37 @@ export async function searchPatientForEditAction(
   const { supabase, error: accessError } = await getAuthorizedSupabase();
   if (!supabase) return { form: null, assessmentId: null, message: "", error: accessError };
 
-  const { data: assessments, error: assessmentError } = await supabase
-    .from("assessments")
-    .select("id, raw_data, oas_score, assess_date")
-    .eq("hn", hn)
-    .order("assess_date", { ascending: false })
-    .limit(1);
+  const [patientResult, assessmentResult] = await Promise.all([
+    supabase.from("patients").select("*").eq("hn", hn).maybeSingle(),
+    supabase
+      .from("assessments")
+      .select("id, raw_data, oas_score, assess_date, record_type, created_at")
+      .eq("hn", hn)
+      .in("record_type", ["smi-v_admission", "new_patient"])
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ]);
 
-  if (assessmentError) return { form: null, assessmentId: null, message: "", error: assessmentError.message };
-
-  const assessment = assessments?.[0] as { id?: unknown; raw_data?: unknown; oas_score?: unknown; assess_date?: unknown } | undefined;
-  if (assessment) {
-    const rawData = asRecord(assessment.raw_data);
-    const form = editFormFromRaw(rawData, hn);
-    form.oas_score = readRecordText(rawData, "oas_score") || readRecordText(asRecord(assessment), "oas_score");
-    form.admission_date = form.admission_date || readRecordText(asRecord(assessment), "assess_date");
-    return {
-      form,
-      assessmentId: readRecordText(asRecord(assessment), "id") || null,
-      message: `พบข้อมูล HN ${hn} จากผลประเมินล่าสุด`,
-      error: "",
-    };
-  }
-
-  const { data: patient, error: patientError } = await supabase
-    .from("patients")
-    .select("*")
-    .eq("hn", hn)
-    .maybeSingle();
+  const { data: patient, error: patientError } = patientResult;
+  const { data: assessments, error: assessmentError } = assessmentResult;
 
   if (patientError) return { form: null, assessmentId: null, message: "", error: patientError.message };
+  if (assessmentError) return { form: null, assessmentId: null, message: "", error: assessmentError.message };
   if (!patient) return { form: null, assessmentId: null, message: "", error: `ไม่พบผู้ป่วย HN: ${hn}` };
 
   const patientRecord = asRecord(patient);
-  const form = editFormFromRaw(patientRecord, hn, patientRecord);
-  form.is_smi_v = form.smi_type !== "ไม่เข้าข่าย SMI-V" && Boolean(form.smi_type);
-  return { form, assessmentId: null, message: `พบข้อมูล HN ${hn}`, error: "" };
+  const assessment = assessments?.[0] as { id?: unknown; raw_data?: unknown } | undefined;
+  const rawData = {
+    ...asRecord(patientRecord.raw_data),
+    ...asRecord(assessment?.raw_data),
+  };
+  const form = editFormFromRaw(rawData, hn, patientRecord);
+  return {
+    form,
+    assessmentId: assessment ? readRecordText(asRecord(assessment), "id") || null : null,
+    message: assessment ? `พบข้อมูล HN ${hn} จากข้อมูลรับใหม่` : `พบข้อมูล HN ${hn}`,
+    error: "",
+  };
 }
 
 export async function saveEditedPatientAction(
@@ -198,7 +211,7 @@ export async function saveEditedPatientAction(
   const input = Object.fromEntries(
     Object.keys(emptyEditPatientForm).map((key) => [
       key,
-      key === "is_smi_v" ? formData.get(key) === "true" : readText(formData, key),
+      readText(formData, key),
     ]),
   );
   const parsed = editPatientSchema.safeParse(input);
@@ -209,27 +222,74 @@ export async function saveEditedPatientAction(
   const { supabase, error: accessError } = await getAuthorizedSupabase();
   if (!supabase) return { status: "error", message: accessError };
 
+  const { data: currentPatient, error: currentPatientError } = await supabase
+    .from("patients")
+    .select("prefix")
+    .eq("hn", hn)
+    .maybeSingle();
+  if (currentPatientError) return { status: "error", message: currentPatientError.message };
+  if (!currentPatient) return { status: "error", message: `ไม่พบผู้ป่วย HN: ${hn}` };
+
   const ageText = values.age;
-  const oasText = values.oas_score;
+  const oasText = values.oasScore;
+  const diagnosis = values.diagnosis === "อื่นๆ" ? values.diagnosisOther : values.diagnosis;
+  const caregiverRelation = values.caregiverRelation === "อื่นๆ"
+    ? values.caregiverRelationOther
+    : values.caregiverRelation;
+  const residenceSubdistrict = values.residenceDistrict === "ในเขตอำเภอเมืองชลบุรี"
+    ? values.residenceSubdistrict
+    : values.residenceOtherDistrict;
+  const record = {
+    hn,
+    first_name: values.firstName,
+    last_name: values.lastName,
+    full_name: `${values.firstName} ${values.lastName}`.trim(),
+    gender: values.gender,
+    age: values.age,
+    diagnosis,
+    admission_source: values.admissionSource,
+    admission_date: values.admissionDate,
+    admitting_doctor: values.admittingDoctor,
+    smi_v_result: values.smiV,
+    is_smi_v: values.smiV !== NON_SMIV_VALUE,
+    oas_score: values.oasScore,
+    oas_risk_level: riskLevelMap[values.oasScore] ?? "Low Risk",
+    aggressive_behavior: values.aggressiveBehavior,
+    substance_use: values.substanceUse,
+    substance_type: values.substanceUse === "ใช้" ? values.substanceType : "",
+    readmit_28_days: values.readmit28,
+    admit_three_times: values.admit3times,
+    admit_number: values.admitNumber,
+    residence_type: values.residenceType,
+    residence_district: values.residenceDistrict,
+    residence_subdistrict: residenceSubdistrict,
+    residence_details: values.residenceDetails,
+    caregiver_status: values.caregiverStatus,
+    caregiver_name: values.caregiverName,
+    caregiver_relation: caregiverRelation,
+    caregiver_phone: values.caregiverPhone,
+    patient_phone: values.patientPhone,
+  };
   const payload = {
     hn,
-    prefix: values.prefix || null,
-    full_name: values.full_name || null,
+    prefix: currentPatient.prefix,
+    full_name: record.full_name,
     gender: values.gender || null,
     age: ageText ? Number(ageText) : null,
-    smi_type: values.smi_type || null,
-    substance: values.substance_use || null,
-    admit_date: values.admission_date || null,
-    admitting_doctor: values.admitting_doctor || null,
+    smi_type: values.smiV || null,
+    substance: values.substanceUse || "ไม่ระบุ",
+    admit_date: values.admissionDate || null,
+    admitting_doctor: values.admittingDoctor || null,
     oas_score: oasText ? Number(oasText) : null,
-    oas_risk: values.oas_risk_level || null,
+    oas_risk: record.oas_risk_level,
+    raw_data: record as Json,
   };
 
   const assessmentId = readText(formData, "assessmentId");
   const { error: rpcError } = await supabase.rpc("update_patient_with_assessment", {
     p_profile: payload as Json,
     p_assessment_id: assessmentId,
-    p_raw_data: values as Json,
+    p_raw_data: record as Json,
   });
   if (!rpcError) return { status: "success", message: "บันทึกข้อมูลผู้ป่วยเรียบร้อยแล้ว" };
   if (!isMissingDatabaseFunction(rpcError)) {
@@ -242,7 +302,7 @@ export async function saveEditedPatientAction(
   if (assessmentId) {
     const { error: assessmentError } = await supabase
       .from("assessments")
-      .update({ raw_data: values as Json, oas_score: oasText ? Number(oasText) : null })
+      .update({ raw_data: record as Json, oas_score: oasText ? Number(oasText) : null })
       .eq("id", assessmentId);
     if (assessmentError) return { status: "error", message: `อัปเดต assessment ล้มเหลว: ${assessmentError.message}` };
   }

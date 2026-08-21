@@ -68,14 +68,26 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       await page.locator('form').first().locator("input").fill(hn);
       await page.getByRole("button", { name: "ค้นหา", exact: true }).click();
       await expect(page.locator('[name="hn"]')).toHaveValue(hn);
-      await page.locator('[name="patient_phone"]').fill("0000000001");
+      await expect(page.locator('[name="age"]')).toHaveAttribute("type", "number");
+      await expect(page.locator('[name="gender"]')).toHaveJSProperty("tagName", "SELECT");
+      await expect(page.locator('[name="diagnosis"]')).toHaveJSProperty("tagName", "SELECT");
+      await expect(page.locator('[name="admissionSource"]')).toHaveJSProperty("tagName", "SELECT");
+      await expect(page.locator('[name="admittingDoctor"]')).toHaveJSProperty("tagName", "SELECT");
+      await expect(page.locator('[name="smiV"]')).toHaveCount(5);
+      await page.locator('[name="patientPhone"]').fill("0000000001");
       await page
         .getByRole("main")
         .getByRole("button", { name: "บันทึกข้อมูล", exact: true })
         .click();
       await expect(page.getByText("บันทึกข้อมูลผู้ป่วยเรียบร้อยแล้ว")).toBeVisible();
       await expect(page.getByRole("main").locator("form").first().locator("input")).toHaveValue("");
-      await expect(page.locator('[name="patient_phone"]')).toHaveCount(0);
+      await expect(page.locator('[name="patientPhone"]')).toHaveCount(0);
+
+      await page.locator("#edit-patient-hn-search").fill(hn);
+      await page.getByRole("button", { name: "ค้นหา", exact: true }).click();
+      await expect(page.locator('[name="patientPhone"]')).toHaveValue("0000000001");
+      await expect(page.locator('[name="diagnosis"]')).toHaveValue("Schizophrenia");
+      await expect(page.locator('[name="admissionSource"]')).toHaveValue("รับจาก ER");
     });
 
     await test.step("save a shift assessment", async () => {

@@ -1,5 +1,96 @@
 export const NON_SMIV_VALUE = "ไม่เข้าข่าย SMI-V";
 
+export const SUBSTANCE_USE_OPTIONS = ["ไม่ใช้", "ใช้"] as const;
+export const SUBSTANCE_TYPE_OPTIONS = [
+  "ใช้ยาเสพติด",
+  "ใช้สุรา",
+  "ใช้ทั้งสารเสพติดและสุรา",
+] as const;
+export const YES_NO_OPTIONS = ["ใช่", "ไม่ใช่"] as const;
+export const RESIDENCE_TYPE_OPTIONS = [
+  "เร่ร่อน/อยู่สถานสงเคราะห์",
+  "มีที่อยู่เป็นหลักแหล่ง",
+] as const;
+export const RESIDENCE_DISTRICT_OPTIONS = [
+  "ในเขตอำเภอเมืองชลบุรี",
+  "นอกเขตอำเภอเมืองชลบุรี",
+  "นอกจังหวัด",
+] as const;
+export const CITY_SUBDISTRICTS = [
+  "บางทราย",
+  "บางปลาสร้อย",
+  "บ้านโขด",
+  "มะขามหย่ง",
+  "บ้านสวน",
+  "หนองรี",
+  "หนองข้างคอก",
+  "นาป่า",
+  "ดอนหัวฬ่อ",
+  "หนองไม้แดง",
+  "คลองตำหรุ",
+  "เสม็ด",
+  "ห้วยกะปิ",
+  "บ้านปึก",
+  "อ่างศิลา",
+  "แสนสุข",
+  "เหมือง",
+  "สำนักบก",
+] as const;
+export const OTHER_DISTRICTS = [
+  "พนัสนิคม",
+  "พานทอง",
+  "บ้านบึง",
+  "ศรีราชา",
+  "บางละมุง",
+  "สัตหีบ",
+  "หนองใหญ่",
+  "บ่อทอง",
+  "เกาะจันทร์",
+  "เกาะสีชัง",
+] as const;
+export const CAREGIVER_STATUS_OPTIONS = [
+  "มีผู้ดูแลหลัก",
+  "มีผู้ดูแลแต่ไม่ได้อยู่ด้วยกัน",
+  "อยู่คนเดียว",
+] as const;
+export const CAREGIVER_RELATION_OPTIONS = [
+  "บิดามารดา",
+  "คู่สมรส",
+  "พี่น้อง",
+  "ญาติ",
+  "บุตร",
+  "อื่นๆ",
+] as const;
+export const DIAGNOSIS_OPTIONS = [
+  "Schizophrenia",
+  "Schizophrenia Paranoid",
+  "Substance Induce Psychosis",
+  "Alcohol",
+  "Acute Psychosis",
+  "Depressive",
+  "Adjustment",
+  "Bipolar",
+  "Suicidal Attempt",
+  "Psychotic Disorder",
+  "Amphetamine Induce Psychosis",
+  "อื่นๆ",
+] as const;
+export const ADMISSION_SOURCE_OPTIONS = [
+  "รับจาก ER",
+  "รับจาก OPD",
+  "รับย้าย",
+  "Refer Fasttrack",
+] as const;
+export const ADMITTING_DOCTOR_OPTIONS = [
+  "พญ. บุญพร้อม เชษฐรตานนท์",
+  "พญ. ปฏิมาภรณ์ ผลบุณยรักษ์",
+  "พญ. อารียา สมบูรณ์เกื้อ",
+  "นพ. แสนพล บุญชัย",
+  "พญ. หทัยภัทร วิทยศักดิ์พันธุ์",
+  "พญ. อนัญญา ชัยวัฒนพงศ์",
+  "นพ.พูร์ ชีวะสุทโธ",
+] as const;
+
 export const SMI_V_OPTIONS = [
   {
     value: "SMI-V 1",

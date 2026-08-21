@@ -21,10 +21,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  ADMISSION_SOURCE_OPTIONS,
+  ADMITTING_DOCTOR_OPTIONS,
+  CAREGIVER_RELATION_OPTIONS,
+  CAREGIVER_STATUS_OPTIONS,
+  CITY_SUBDISTRICTS,
+  DIAGNOSIS_OPTIONS,
   NON_SMIV_VALUE,
   OAS_CARE_CONTENT,
   OAS_OPTIONS,
+  OTHER_DISTRICTS,
+  RESIDENCE_DISTRICT_OPTIONS,
+  RESIDENCE_TYPE_OPTIONS,
   SMI_V_OPTIONS,
+  SUBSTANCE_TYPE_OPTIONS,
+  SUBSTANCE_USE_OPTIONS,
+  YES_NO_OPTIONS,
 } from "@/lib/constants/admission";
 import {
   newPatientDefaultValues,
@@ -44,62 +56,6 @@ const steps = [
 
 const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-const citySubdistricts = [
-  "บางทราย",
-  "บางปลาสร้อย",
-  "บ้านโขด",
-  "มะขามหย่ง",
-  "บ้านสวน",
-  "หนองรี",
-  "หนองข้างคอก",
-  "นาป่า",
-  "ดอนหัวฬ่อ",
-  "หนองไม้แดง",
-  "คลองตำหรุ",
-  "เสม็ด",
-  "ห้วยกะปิ",
-  "บ้านปึก",
-  "อ่างศิลา",
-  "แสนสุข",
-  "เหมือง",
-  "สำนักบก",
-];
-const otherDistricts = [
-  "พนัสนิคม",
-  "พานทอง",
-  "บ้านบึง",
-  "ศรีราชา",
-  "บางละมุง",
-  "สัตหีบ",
-  "หนองใหญ่",
-  "บ่อทอง",
-  "เกาะจันทร์",
-  "เกาะสีชัง",
-];
-const diagnoses = [
-  "Schizophrenia",
-  "Schizophrenia Paranoid",
-  "Substance Induce Psychosis",
-  "Alcohol",
-  "Acute Psychosis",
-  "Depressive",
-  "Adjustment",
-  "Bipolar",
-  "Suicidal Attempt",
-  "Psychotic Disorder",
-  "Amphetamine Induce Psychosis",
-  "อื่นๆ",
-];
-const doctors = [
-  "พญ. บุญพร้อม เชษฐรตานนท์",
-  "พญ. ปฏิมาภรณ์ ผลบุณยรักษ์",
-  "พญ. อารียา สมบูรณ์เกื้อ",
-  "นพ. แสนพล บุญชัย",
-  "พญ. หทัยภัทร วิทยศักดิ์พันธุ์",
-  "พญ. อนัญญา ชัยวัฒนพงศ์",
-  "นพ.พูร์ ชีวะสุทโธ",
-];
 
 const stepFields: Record<number, FieldPath<NewPatientFormValues>[]> = {
   0: ["firstName", "lastName", "gender", "age", "hn"],
@@ -322,8 +278,9 @@ function AdditionalStep() {
             className={selectClass}
           >
             <option value="">-- เลือก --</option>
-            <option value="ไม่ใช้">ไม่ใช้</option>
-            <option value="ใช้">ใช้</option>
+            {SUBSTANCE_USE_OPTIONS.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
           </select>
           {substanceUse === "ใช้" ? (
             <div className="mt-2">
@@ -333,11 +290,9 @@ function AdditionalStep() {
                 className={selectClass}
               >
                 <option value="">-- เลือกประเภท --</option>
-                <option value="ใช้ยาเสพติด">ใช้ยาเสพติด</option>
-                <option value="ใช้สุรา">ใช้สุรา</option>
-                <option value="ใช้ทั้งสารเสพติดและสุรา">
-                  ใช้ทั้งสารเสพติดและสุรา
-                </option>
+                {SUBSTANCE_TYPE_OPTIONS.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
               </select>
               <FieldError name="substanceType" />
             </div>
@@ -350,8 +305,9 @@ function AdditionalStep() {
             className={selectClass}
           >
             <option value="">-- เลือก --</option>
-            <option value="ใช่">ใช่</option>
-            <option value="ไม่ใช่">ไม่ใช่</option>
+            {YES_NO_OPTIONS.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
           </select>
         </FormField>
         <FormField name="admit3times" label="3.2 Admit ≥ 3 ครั้งใน 1 ปี">
@@ -361,8 +317,9 @@ function AdditionalStep() {
             className={selectClass}
           >
             <option value="">-- เลือก --</option>
-            <option value="ใช่">ใช่</option>
-            <option value="ไม่ใช่">ไม่ใช่</option>
+            {YES_NO_OPTIONS.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
           </select>
           {admit3times === "ใช่" ? (
             <div className="mt-2">
@@ -406,12 +363,9 @@ function AddressStep() {
             className={selectClass}
           >
             <option value="">-- เลือกสถานภาพที่อยู่ --</option>
-            <option value="เร่ร่อน/อยู่สถานสงเคราะห์">
-              เร่ร่อน/อยู่สถานสงเคราะห์
-            </option>
-            <option value="มีที่อยู่เป็นหลักแหล่ง">
-              มีที่อยู่เป็นหลักแหล่ง
-            </option>
+            {RESIDENCE_TYPE_OPTIONS.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
           </select>
         </FormField>
         {hasPermanentResidence ? (
@@ -428,13 +382,9 @@ function AddressStep() {
                   className={selectClass}
                 >
                   <option value="">-- เลือกเขต --</option>
-                  <option value="ในเขตอำเภอเมืองชลบุรี">
-                    ในเขตอำเภอเมืองชลบุรี
-                  </option>
-                  <option value="นอกเขตอำเภอเมืองชลบุรี">
-                    นอกเขตอำเภอเมืองชลบุรี
-                  </option>
-                  <option value="นอกจังหวัด">นอกจังหวัด</option>
+                  {RESIDENCE_DISTRICT_OPTIONS.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
                 </select>
               </FormField>
               {residenceDistrict === "ในเขตอำเภอเมืองชลบุรี" ? (
@@ -445,7 +395,7 @@ function AddressStep() {
                     className={selectClass}
                   >
                     <option value="">-- เลือกตำบล --</option>
-                    {citySubdistricts.map((item) => (
+                    {CITY_SUBDISTRICTS.map((item) => (
                       <option key={item}>{item}</option>
                     ))}
                   </select>
@@ -459,7 +409,7 @@ function AddressStep() {
                     className={selectClass}
                   >
                     <option value="">-- เลือกอำเภอ --</option>
-                    {otherDistricts.map((item) => (
+                    {OTHER_DISTRICTS.map((item) => (
                       <option key={item}>{item}</option>
                     ))}
                   </select>
@@ -480,11 +430,9 @@ function AddressStep() {
                 className={selectClass}
               >
                 <option value="">-- เลือกสถานภาพผู้ดูแล --</option>
-                <option value="มีผู้ดูแลหลัก">มีผู้ดูแลหลัก</option>
-                <option value="มีผู้ดูแลแต่ไม่ได้อยู่ด้วยกัน">
-                  มีผู้ดูแลแต่ไม่ได้อยู่ด้วยกัน
-                </option>
-                <option value="อยู่คนเดียว">อยู่คนเดียว</option>
+                {CAREGIVER_STATUS_OPTIONS.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
               </select>
             </FormField>
             {caregiverStatus && caregiverStatus !== "อยู่คนเดียว" ? (
@@ -499,14 +447,7 @@ function AddressStep() {
                     className={selectClass}
                   >
                     <option value="">-- เลือก --</option>
-                    {[
-                      "บิดามารดา",
-                      "คู่สมรส",
-                      "พี่น้อง",
-                      "ญาติ",
-                      "บุตร",
-                      "อื่นๆ",
-                    ].map((item) => (
+                    {CAREGIVER_RELATION_OPTIONS.map((item) => (
                       <option key={item}>{item}</option>
                     ))}
                   </select>
@@ -546,7 +487,7 @@ function AddressStep() {
                   className={selectClass}
                 >
                   <option value="">-- เลือกการวินิจฉัย --</option>
-                  {diagnoses.map((item) => (
+                  {DIAGNOSIS_OPTIONS.map((item) => (
                     <option key={item}>{item}</option>
                   ))}
                 </select>
@@ -567,10 +508,9 @@ function AddressStep() {
                   className={selectClass}
                 >
                   <option value="">-- เลือกวิธีรับผู้ป่วย --</option>
-                  <option value="รับจาก ER">รับจาก ER</option>
-                  <option value="รับจาก OPD">รับจาก OPD</option>
-                  <option value="รับย้าย">รับย้าย</option>
-                  <option value="Refer Fasttrack">Refer Fasttrack</option>
+                  {ADMISSION_SOURCE_OPTIONS.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
                 </select>
                 {watch("admissionSource") ? (
                   <div className="mt-2">
@@ -589,7 +529,7 @@ function AddressStep() {
                   className={selectClass}
                 >
                   <option value="">-- เลือกแพทย์ผู้รับ --</option>
-                  {doctors.map((item) => (
+                  {ADMITTING_DOCTOR_OPTIONS.map((item) => (
                     <option key={item}>{item}</option>
                   ))}
                 </select>
