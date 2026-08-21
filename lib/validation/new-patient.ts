@@ -60,7 +60,9 @@ export const newPatientSchema = z
       if (value.residenceDistrict === "ในเขตอำเภอเมืองชลบุรี" && !value.residenceSubdistrict) issue("residenceSubdistrict", "กรุณาเลือกตำบล");
       if (value.residenceDistrict === "นอกเขตอำเภอเมืองชลบุรี" && !value.residenceOtherDistrict) issue("residenceOtherDistrict", "กรุณาเลือกอำเภอ");
       if (!value.residenceDetails) issue("residenceDetails", "กรุณากรอกรายละเอียดที่อยู่");
-      if (!value.caregiverStatus) issue("caregiverStatus", "กรุณาเลือกสถานภาพผู้ดูแล");
+    }
+
+    if (!value.caregiverStatus) issue("caregiverStatus", "กรุณาเลือกสถานภาพผู้ดูแล");
       if (value.caregiverStatus === "อยู่คนเดียว") {
         if (!value.patientPhone) issue("patientPhone", "กรุณากรอกเบอร์โทรศัพท์ผู้ป่วย");
       } else if (value.caregiverStatus) {
@@ -76,7 +78,6 @@ export const newPatientSchema = z
         issue("admissionDate", "กรุณาเลือกวันที่เข้ารับการรักษา");
       }
       if (!value.admittingDoctor) issue("admittingDoctor", "กรุณาเลือกนายแพทย์ผู้รับ");
-    }
   });
 
 export type NewPatientFormValues = z.infer<typeof newPatientSchema>;

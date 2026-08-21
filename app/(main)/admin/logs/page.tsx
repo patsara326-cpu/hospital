@@ -1,50 +1,89 @@
 import { redirect } from "next/navigation";
 
 import LogViewer, { type LogEntry } from "@/components/logs/LogViewer";
+import {
+  getActorLabel,
+  getChangedFieldDetails,
+  getEventLabel,
+  getMetadataDetails,
+  getRoleLabel,
+  getTargetLabel,
+  type LogSource,
+} from "@/lib/logs/event-labels";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  LOG_PAGE_SIZE,
+  parseLogSearchParams,
+  resolveLogTimeRange,
+} from "@/lib/validation/log-filter";
 
 const LOG_ROLES = new Set(["auditor", "admin"]);
 
-function metadataDetails(metadata: unknown): string[] {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return [];
-  const value = metadata as Record<string, unknown>;
-  const labels: Record<string, string> = {
-    report_type: "รายงาน", filename: "ไฟล์", row_count: "จำนวนแถว", gender: "เพศ",
-    month: "เดือน", year: "ปี", smi_filter: "SMI-V", residence_filter: "ที่อยู่",
-  };
-  return Object.entries(value)
-    .filter(([, item]) => item !== "" && item !== null && item !== undefined)
-    .map(([key, item]) => `${labels[key] ?? key}: ${String(item)}`);
-}
+type LogsPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-export default async function LogsPage() {
+export default async function LogsPage({ searchParams }: LogsPageProps) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) redirect("/login");
 
   const { data: role, error: roleError } = await supabase.rpc("current_app_role");
   if (roleError || !LOG_ROLES.has(role)) redirect("/dashboard");
 
-  const [activityResult, auditResult] = await Promise.all([
-    supabase.from("activity_log").select("id,event_type,actor_username,actor_role,target_type,target_ref,metadata,occurred_at").order("occurred_at", { ascending: false }).limit(250),
-    supabase.from("audit_log").select("id,table_name,operation,record_ref,changed_by_username,changed_role,changed_fields,changed_at,transaction_id").order("changed_at", { ascending: false }).limit(250),
-  ]);
+  const filters = parseLogSearchParams(await searchParams);
+  const { page, ...filterValues } = filters;
+  const timeRange = resolveLogTimeRange(filters);
+  const offset = (page - 1) * LOG_PAGE_SIZE;
 
-  const activityEntries: LogEntry[] = (activityResult.data ?? []).map((row) => ({
-    id: String(row.id), source: "activity", timestamp: row.occurred_at,
-    actor: row.actor_username, actorRole: row.actor_role, eventType: row.event_type,
-    target: [row.target_type, row.target_ref].filter(Boolean).join(": "),
-    details: metadataDetails(row.metadata),
-  }));
-  const auditEntries: LogEntry[] = (auditResult.data ?? []).map((row) => ({
-    id: String(row.id), source: "audit", timestamp: row.changed_at,
-    actor: row.changed_by_username ?? "ระบบ", actorRole: row.changed_role ?? "",
-    eventType: `${row.table_name}.${row.operation.toLocaleLowerCase()}`,
-    target: [row.table_name, row.record_ref].filter(Boolean).join(": "),
-    details: [row.changed_fields.length ? `ฟิลด์: ${row.changed_fields.join(", ")}` : "", `Transaction: ${row.transaction_id}`].filter(Boolean),
-  }));
-  const entries = [...activityEntries, ...auditEntries]
-    .sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp));
-  const errors = [activityResult.error?.message, auditResult.error?.message].filter(Boolean).join(" · ");
+  let logQuery = supabase
+    .from("admin_log_entries")
+    .select(
+      "source,entry_id,occurred_at,actor_username,actor_display_name,actor_role,event_code,target_type,target_ref,metadata,changed_fields,transaction_id",
+      { count: "exact" },
+    );
 
-  return <LogViewer entries={entries} error={errors} />;
+  if (timeRange.from) logQuery = logQuery.gte("occurred_at", timeRange.from);
+  if (timeRange.to) logQuery = logQuery.lt("occurred_at", timeRange.to);
+  if (filters.source) logQuery = logQuery.eq("source", filters.source);
+  if (filters.actorRole) logQuery = logQuery.eq("actor_role", filters.actorRole);
+  if (filters.eventType) logQuery = logQuery.eq("event_code", filters.eventType);
+  if (filters.query) logQuery = logQuery.ilike("search_text", `%${filters.query}%`);
+
+  const result = await logQuery
+    .order("occurred_at", { ascending: false })
+    .order("entry_id", { ascending: false })
+    .range(offset, offset + LOG_PAGE_SIZE - 1);
+
+  const entries: LogEntry[] = (result.data ?? []).flatMap((row) => {
+    if (!row.entry_id || !row.occurred_at || !row.event_code) return [];
+    const source: LogSource = row.source === "audit" ? "audit" : "activity";
+    const details = source === "audit"
+      ? [
+          ...getChangedFieldDetails(row.changed_fields ?? []),
+          row.transaction_id ? `Transaction: ${row.transaction_id}` : "",
+        ].filter(Boolean)
+      : getMetadataDetails(row.metadata);
+
+    return [{
+      id: row.entry_id,
+      source,
+      timestamp: row.occurred_at,
+      actor: getActorLabel(row.actor_display_name, row.actor_username),
+      actorRole: getRoleLabel(row.actor_role ?? ""),
+      eventLabel: getEventLabel(row.event_code, source),
+      target: getTargetLabel(row.target_type, row.target_ref),
+      details,
+    }];
+  });
+
+  return (
+    <LogViewer
+      entries={entries}
+      error={result.error?.message ?? ""}
+      filters={filterValues}
+      total={result.count ?? entries.length}
+      page={page}
+      pageSize={LOG_PAGE_SIZE}
+    />
+  );
 }

@@ -111,6 +111,14 @@ textarea {
   font: inherit;
 }
 
+.legacy-navbar .legacy-nav-item,
+.legacy-navbar .legacy-dropdown-item,
+.legacy-navbar .legacy-subgroup-trigger {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+}
+
 main {
   min-height: 100vh;
 }
@@ -122,6 +130,7 @@ main {
 
   .legacy-navbar {
     @apply sticky top-0 z-50 border-b border-white/10 bg-[rgba(49,46,129,0.9)] text-white shadow-[0_4px_20px_rgba(15,23,42,0.12)] backdrop-blur-xl;
+    font-family: var(--font-sarabun), "Segoe UI", sans-serif;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -147,8 +156,7 @@ main {
   }
 
   .legacy-nav-item {
-    @apply relative flex items-center rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white;
-    font-family: var(--font-sarabun), "Segoe UI", sans-serif;
+    @apply relative flex items-center rounded-lg px-3 py-2 text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white;
     display: inline-flex;
     cursor: pointer;
   }
@@ -215,7 +223,7 @@ main {
   }
 
   .legacy-dropdown-item {
-    @apply block rounded-lg px-3 py-2 text-sm text-slate-700 transition-all duration-150 hover:bg-slate-100 hover:text-indigo-600 hover:translate-x-1;
+    @apply block rounded-lg px-3 py-2 text-slate-700 transition-all duration-150 hover:bg-slate-100 hover:text-indigo-600 hover:translate-x-1;
   }
 
   .legacy-dropdown-wide {
@@ -227,7 +235,7 @@ main {
   }
 
   .legacy-subgroup-trigger {
-    @apply flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 hover:text-indigo-600;
+    @apply flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-slate-700 transition hover:bg-slate-100 hover:text-indigo-600;
     border: 0;
     background: transparent;
     cursor: pointer;
@@ -297,6 +305,12 @@ main {
 }
 
 @media (max-width: 767px) {
+  .legacy-navbar .legacy-nav-item,
+  .legacy-navbar .legacy-dropdown-item,
+  .legacy-navbar .legacy-subgroup-trigger {
+    font-size: 1rem;
+  }
+
   .legacy-navbar-inner {
     min-height: 60px;
   }
@@ -354,7 +368,7 @@ main {
 
   .legacy-nav-item,
   .legacy-nav-trigger {
-    @apply min-h-12 w-full justify-between rounded-xl px-4 py-3 text-left text-base text-white/90;
+    @apply min-h-12 w-full justify-between rounded-xl px-4 py-3 text-left text-white/90;
   }
 
   .legacy-nav-item::after {
@@ -389,7 +403,7 @@ main {
 
   .legacy-dropdown-item,
   .legacy-subgroup-trigger {
-    @apply min-h-11 rounded-lg px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white;
+    @apply min-h-11 rounded-lg px-4 py-2.5 text-slate-200 hover:bg-white/10 hover:text-white;
   }
 
   .legacy-subgroup {

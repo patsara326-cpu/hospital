@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { NON_SMIV_VALUE } from "../../lib/constants/admission";
 import { getPhase5Env, type Phase5Env } from "./env";
 
 async function login(page: Page, env: Phase5Env) {
@@ -46,6 +47,40 @@ test("clinical forms expose validation and empty-result states", async ({ page }
     await page.goto("/patients/new");
     await page.locator("main form button").filter({ hasText: /.+/ }).last().click();
     await expect(page.locator("main form .text-destructive").first()).toBeVisible();
+  });
+
+  await test.step("new patient address step keeps items 1 and 4-7 visible", async () => {
+    await page.goto("/patients/new");
+    await page.locator('[name="firstName"]').fill("ทดสอบเงื่อนไข");
+    await page.locator('[name="lastName"]').fill("ที่อยู่");
+    await page.locator('[name="gender"]').selectOption("ชาย");
+    await page.locator('[name="age"]').fill("30");
+    await page.locator('[name="hn"]').fill(`UI-${Date.now()}`);
+    await page.getByRole("button", { name: "ถัดไป" }).click();
+    await page.locator(`[name="smiV"][value="${NON_SMIV_VALUE}"]`).check();
+    await page.getByRole("button", { name: "ถัดไป" }).click();
+
+    for (const name of [
+      "residenceType",
+      "caregiverStatus",
+      "diagnosis",
+      "admissionSource",
+      "admittingDoctor",
+    ]) {
+      await expect(page.locator(`[name="${name}"]`)).toBeVisible();
+    }
+    await expect(page.locator('[name="residenceDistrict"]')).toHaveCount(0);
+
+    await page.locator('[name="residenceType"]').selectOption("มีที่อยู่เป็นหลักแหล่ง");
+    await expect(page.locator('[name="residenceDistrict"]')).toBeVisible();
+    await page.locator('[name="residenceDistrict"]').selectOption("นอกจังหวัด");
+    await page.locator('[name="residenceDetails"]').fill("ค่าที่ต้องถูกล้างเมื่อซ่อน");
+
+    await page.locator('[name="residenceType"]').selectOption("เร่ร่อน/อยู่สถานสงเคราะห์");
+    await expect(page.locator('[name="residenceDistrict"]')).toHaveCount(0);
+    await page.locator('[name="residenceType"]').selectOption("มีที่อยู่เป็นหลักแหล่ง");
+    await expect(page.locator('[name="residenceDistrict"]')).toHaveValue("");
+    await expect(page.locator('[name="residenceDetails"]')).toHaveValue("");
   });
 
   for (const route of ["/patients/edit", "/patients/discharge", "/ior"] as const) {

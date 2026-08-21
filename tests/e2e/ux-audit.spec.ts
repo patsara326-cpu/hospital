@@ -146,3 +146,32 @@ test("all authenticated routes stay usable at target viewports", async ({ page }
   expect(pageErrors, "uncaught browser errors").toEqual([]);
   expect(issues, "responsive/accessibility audit issues").toEqual([]);
 });
+
+test("navbar menu labels use consistent typography", async ({ page }) => {
+  await login(page, getPhase5Env());
+
+  for (const viewport of [
+    { width: 375, height: 812, expectedSize: "16px" },
+    { width: 1440, height: 900, expectedSize: "14px" },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/dashboard");
+
+    const typography = await page
+      .locator("#main-navigation .legacy-nav-item, #main-navigation .legacy-dropdown-item, #main-navigation .legacy-subgroup-trigger")
+      .evaluateAll((elements) => elements.map((element) => {
+        const style = window.getComputedStyle(element);
+        return {
+          family: style.fontFamily,
+          size: style.fontSize,
+          weight: style.fontWeight,
+          lineHeight: style.lineHeight,
+        };
+      }));
+
+    expect(new Set(typography.map((item) => item.family)).size).toBe(1);
+    expect(new Set(typography.map((item) => item.size))).toEqual(new Set([viewport.expectedSize]));
+    expect(new Set(typography.map((item) => item.weight))).toEqual(new Set(["600"]));
+    expect(new Set(typography.map((item) => item.lineHeight))).toEqual(new Set(["24px"]));
+  }
+});
