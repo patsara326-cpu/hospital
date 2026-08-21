@@ -158,6 +158,12 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       const archivedIorRow = page.locator("tbody tr").filter({ hasText: hn });
       await expect(archivedIorRow).toBeVisible();
       await expect(archivedIorRow).toContainText("PhaseFive");
+
+      await page.goto("/history");
+      await page.locator('[name="hn"]').fill(hn);
+      await page.getByRole("button", { name: "ค้นหา", exact: true }).click();
+      await expect(page.getByText(hn, { exact: true })).toBeVisible();
+      await expect(page.getByRole("main")).toContainText("F20.99 E2E synthetic discharge");
     });
   } finally {
     await cleanupSyntheticPatient(env, hn);
