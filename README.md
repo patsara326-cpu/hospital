@@ -17,7 +17,7 @@ assessment, discharge, IOR, IPD, dashboard, history, and statistics application.
 - [x] Add the `ior_statistics` view with an application fallback until migration deployment.
 - [x] Restrict IPD lists to current rows in `patients`.
 - [x] Consolidate statistics filters, panel layout, and Excel export UI.
-- [x] Use self-hosted Sarabun/Kanit through `next/font/local`.
+- [x] Use self-hosted Sarabun/Kodchasan through `next/font/local`.
 - [x] Upgrade SheetJS to vendored 0.20.3; production dependency audit is clean.
 - [x] Pass unit tests, TypeScript, lint, production build, and unauthenticated browser smoke tests.
 - [x] Apply migrations to the staging Supabase project and pass the role security checklist.

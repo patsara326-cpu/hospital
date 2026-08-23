@@ -15,7 +15,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@fontsource/kanit": "^5.3.0",
+    "@fontsource/kodchasan": "^5.3.0",
     "@fontsource/sarabun": "^5.3.0",
     "@hookform/resolvers": "^5.9.1",
     "@supabase/ssr": "^0.12.4",
