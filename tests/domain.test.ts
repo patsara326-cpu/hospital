@@ -106,6 +106,16 @@ test("new patient schema accepts a complete SMI-V admission", () => {
   assert.equal(newPatientSchema.safeParse(completeSmivPatient).success, true);
 });
 
+test("new patient schema allows an empty patient phone", () => {
+  assert.equal(
+    newPatientSchema.safeParse({
+      ...completeSmivPatient,
+      patientPhone: "",
+    }).success,
+    true,
+  );
+});
+
 test("new patient schema enforces conditional OAS and admission fields", () => {
   const result = newPatientSchema.safeParse({
     ...completeSmivPatient,

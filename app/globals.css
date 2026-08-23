@@ -140,7 +140,7 @@ main {
   }
 
   .legacy-brand {
-    @apply bg-gradient-to-r from-white to-slate-300 bg-clip-text text-xl font-semibold tracking-[0.08em] text-transparent;
+    @apply flex items-center gap-2 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-xl font-semibold tracking-[0.08em] text-transparent;
     font-family: var(--font-kanit), var(--font-sarabun), sans-serif;
     min-width: 0;
   }
@@ -156,7 +156,7 @@ main {
   }
 
   .legacy-nav-item {
-    @apply relative flex items-center rounded-lg px-3 py-2 text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white;
+    @apply relative flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-white/80 transition-all duration-200 hover:bg-white/10 hover:text-white;
     display: inline-flex;
     cursor: pointer;
   }
@@ -223,7 +223,7 @@ main {
   }
 
   .legacy-dropdown-item {
-    @apply block rounded-lg px-3 py-2 text-slate-700 transition-all duration-150 hover:bg-slate-100 hover:text-indigo-600 hover:translate-x-1;
+    @apply flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 transition-all duration-150 hover:translate-x-1 hover:bg-slate-100 hover:text-indigo-600;
   }
 
   .legacy-dropdown-wide {
@@ -235,7 +235,7 @@ main {
   }
 
   .legacy-subgroup-trigger {
-    @apply flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-slate-700 transition hover:bg-slate-100 hover:text-indigo-600;
+    @apply flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 transition hover:bg-slate-100 hover:text-indigo-600;
     border: 0;
     background: transparent;
     cursor: pointer;
@@ -243,6 +243,15 @@ main {
 
   .legacy-submenu {
     @apply invisible pointer-events-none absolute left-full top-0 ml-1 min-w-[150px] rounded-xl border border-slate-200 bg-white p-2 opacity-0 shadow-xl transition-all duration-200;
+  }
+
+  .legacy-nav-icon {
+    @apply size-4 shrink-0 opacity-85;
+    stroke-width: 1.8;
+  }
+
+  .legacy-nav-chevron {
+    @apply ml-auto size-4 shrink-0 opacity-70;
   }
 
   .legacy-subgroup:hover > .legacy-submenu,
@@ -290,7 +299,7 @@ main {
   }
 }
 
-@media (min-width: 768px) and (max-width: 1100px) {
+@media (min-width: 1024px) and (max-width: 1100px) {
   .legacy-dropdown-wide {
     right: 0;
     left: auto;
@@ -304,7 +313,7 @@ main {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .legacy-navbar .legacy-nav-item,
   .legacy-navbar .legacy-dropdown-item,
   .legacy-navbar .legacy-subgroup-trigger {
@@ -368,7 +377,7 @@ main {
 
   .legacy-nav-item,
   .legacy-nav-trigger {
-    @apply min-h-12 w-full justify-between rounded-xl px-4 py-3 text-left text-white/90;
+    @apply min-h-12 w-full rounded-xl px-4 py-3 text-left text-white/90;
   }
 
   .legacy-nav-item::after {
@@ -404,6 +413,10 @@ main {
   .legacy-dropdown-item,
   .legacy-subgroup-trigger {
     @apply min-h-11 rounded-lg px-4 py-2.5 text-slate-200 hover:bg-white/10 hover:text-white;
+  }
+
+  .legacy-nav-icon {
+    @apply size-5;
   }
 
   .legacy-subgroup {

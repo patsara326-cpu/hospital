@@ -86,9 +86,7 @@ export const newPatientSchema = z
     }
 
     if (!oneOf(value.caregiverStatus, CAREGIVER_STATUS_OPTIONS)) issue("caregiverStatus", "กรุณาเลือกสถานภาพผู้ดูแล");
-      if (value.caregiverStatus === "อยู่คนเดียว") {
-        if (!value.patientPhone) issue("patientPhone", "กรุณากรอกเบอร์โทรศัพท์ผู้ป่วย");
-      } else if (value.caregiverStatus) {
+      if (value.caregiverStatus && value.caregiverStatus !== "อยู่คนเดียว") {
         if (!value.caregiverName) issue("caregiverName", "กรุณากรอกชื่อผู้ดูแล");
         if (!oneOf(value.caregiverRelation, CAREGIVER_RELATION_OPTIONS)) issue("caregiverRelation", "กรุณาเลือกความสัมพันธ์ผู้ดูแล");
         if (value.caregiverRelation === "อื่นๆ" && !value.caregiverRelationOther) issue("caregiverRelationOther", "กรุณาระบุความสัมพันธ์ผู้ดูแล");

@@ -1,7 +1,31 @@
 "use client";
 
 import { logoutAction } from "@/app/actions/auth";
-import { ChevronDown, ChevronRight, Menu, X } from "lucide-react";
+import {
+  ChartNoAxesCombined,
+  ChevronDown,
+  ChevronRight,
+  CircleUserRound,
+  ClipboardCheck,
+  ClipboardList,
+  ClipboardPlus,
+  History,
+  Hospital,
+  House,
+  LogIn,
+  LogOut,
+  Mars,
+  Menu,
+  NotebookPen,
+  ScrollText,
+  TriangleAlert,
+  UserRoundMinus,
+  UserRoundPen,
+  UserRoundPlus,
+  Venus,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -15,29 +39,31 @@ type NavbarProps = {
   role: string;
 };
 
+type NavigationLink = readonly [label: string, href: string, icon: LucideIcon];
+
 const registrationLinks = [
-  ["ผู้ป่วยใหม่", "/patients/new"],
-  ["แก้ไขผู้ป่วย", "/patients/edit"],
-  ["จำหน่ายผู้ป่วย", "/patients/discharge"],
-] as const;
+  ["ผู้ป่วยใหม่", "/patients/new", UserRoundPlus],
+  ["แก้ไขผู้ป่วย", "/patients/edit", UserRoundPen],
+  ["จำหน่ายผู้ป่วย", "/patients/discharge", UserRoundMinus],
+] as const satisfies readonly NavigationLink[];
 
 const recordLinks = [
-  ["IOR", "/ior"],
-  ["ประวัติจำหน่าย", "/history"],
-  ["IPD ชาย", "/ipd/male"],
-  ["IPD หญิง", "/ipd/female"],
-] as const;
+  ["IOR", "/ior", ClipboardList],
+  ["ประวัติจำหน่าย", "/history", History],
+  ["IPD ชาย", "/ipd/male", Mars],
+  ["IPD หญิง", "/ipd/female", Venus],
+] as const satisfies readonly NavigationLink[];
 
 const statisticLinks = {
   male: [
-    ["รับใหม่", "/statistics/admission/male"],
-    ["จำหน่าย", "/statistics/discharge/male"],
+    ["รับใหม่", "/statistics/admission/male", LogIn],
+    ["จำหน่าย", "/statistics/discharge/male", LogOut],
   ],
   female: [
-    ["รับใหม่", "/statistics/admission/female"],
-    ["จำหน่าย", "/statistics/discharge/female"],
+    ["รับใหม่", "/statistics/admission/female", LogIn],
+    ["จำหน่าย", "/statistics/discharge/female", LogOut],
   ],
-} as const;
+} as const satisfies Record<"male" | "female", readonly NavigationLink[]>;
 
 export default function Navbar({
   displayName,
@@ -55,7 +81,7 @@ export default function Navbar({
   useEffect(() => {
     if (!mobileOpen) return;
 
-    const mobileViewport = window.matchMedia("(max-width: 767px)");
+    const mobileViewport = window.matchMedia("(max-width: 1023px)");
     if (!mobileViewport.matches) return;
 
     const previousOverflow = document.body.style.overflow;
@@ -124,7 +150,8 @@ export default function Navbar({
           </button>
 
           <Link href="/dashboard" className="legacy-brand" onClick={closeNavigation}>
-            ระบบผู้ป่วยจิตเวช
+            <Hospital aria-hidden="true" className="size-5 shrink-0 text-sky-200" />
+            <span className="truncate">ระบบผู้ป่วยจิตเวช</span>
           </Link>
 
           <nav
@@ -135,6 +162,7 @@ export default function Navbar({
             tabIndex={-1}
           >
             <Link href="/dashboard" className="legacy-nav-item" onClick={closeNavigation}>
+              <House aria-hidden="true" className="legacy-nav-icon" />
               หน้าหลัก
             </Link>
 
@@ -145,11 +173,14 @@ export default function Navbar({
                 aria-expanded={openGroup === "registration"}
                 onClick={() => toggleGroup("registration")}
               >
-                ลงทะเบียน <ChevronDown aria-hidden="true" className="size-4" />
+                <ClipboardPlus aria-hidden="true" className="legacy-nav-icon" />
+                <span>ลงทะเบียน</span>
+                <ChevronDown aria-hidden="true" className="legacy-nav-chevron" />
               </button>
               <div className="legacy-dropdown">
-                {registrationLinks.map(([label, href]) => (
+                {registrationLinks.map(([label, href, Icon]) => (
                   <Link key={href} href={href} className="legacy-dropdown-item" onClick={closeNavigation}>
+                    <Icon aria-hidden="true" className="legacy-nav-icon" />
                     {label}
                   </Link>
                 ))}
@@ -157,6 +188,7 @@ export default function Navbar({
             </div>
 
             <Link href="/assessment" className="legacy-nav-item" onClick={closeNavigation}>
+              <ClipboardCheck aria-hidden="true" className="legacy-nav-icon" />
               ประเมินรายเวร
             </Link>
 
@@ -167,11 +199,14 @@ export default function Navbar({
                 aria-expanded={openGroup === "records"}
                 onClick={() => toggleGroup("records")}
               >
-                บันทึกข้อมูล <ChevronDown aria-hidden="true" className="size-4" />
+                <NotebookPen aria-hidden="true" className="legacy-nav-icon" />
+                <span>บันทึกข้อมูล</span>
+                <ChevronDown aria-hidden="true" className="legacy-nav-chevron" />
               </button>
               <div className="legacy-dropdown">
-                {recordLinks.map(([label, href]) => (
+                {recordLinks.map(([label, href, Icon]) => (
                   <Link key={href} href={href} className="legacy-dropdown-item" onClick={closeNavigation}>
+                    <Icon aria-hidden="true" className="legacy-nav-icon" />
                     {label}
                   </Link>
                 ))}
@@ -185,7 +220,9 @@ export default function Navbar({
                 aria-expanded={openGroup === "statistics"}
                 onClick={() => toggleGroup("statistics")}
               >
-                สถิติ <ChevronDown aria-hidden="true" className="size-4" />
+                <ChartNoAxesCombined aria-hidden="true" className="legacy-nav-icon" />
+                <span>สถิติ</span>
+                <ChevronDown aria-hidden="true" className="legacy-nav-chevron" />
               </button>
               <div className="legacy-dropdown legacy-dropdown-wide">
                 <div className={`legacy-subgroup ${openSubgroup === "male-statistics" ? "legacy-subgroup-open" : ""}`}>
@@ -195,11 +232,14 @@ export default function Navbar({
                     aria-expanded={openSubgroup === "male-statistics"}
                     onClick={() => toggleSubgroup("male-statistics")}
                   >
-                    สถิติผู้ป่วยชาย <ChevronRight aria-hidden="true" className="size-4" />
+                    <Mars aria-hidden="true" className="legacy-nav-icon" />
+                    <span>สถิติผู้ป่วยชาย</span>
+                    <ChevronRight aria-hidden="true" className="legacy-nav-chevron" />
                   </button>
                   <div className="legacy-submenu">
-                    {statisticLinks.male.map(([label, href]) => (
+                    {statisticLinks.male.map(([label, href, Icon]) => (
                       <Link key={href} href={href} className="legacy-dropdown-item" onClick={closeNavigation}>
+                        <Icon aria-hidden="true" className="legacy-nav-icon" />
                         {label}
                       </Link>
                     ))}
@@ -213,11 +253,14 @@ export default function Navbar({
                     aria-expanded={openSubgroup === "female-statistics"}
                     onClick={() => toggleSubgroup("female-statistics")}
                   >
-                    สถิติผู้ป่วยหญิง <ChevronRight aria-hidden="true" className="size-4" />
+                    <Venus aria-hidden="true" className="legacy-nav-icon" />
+                    <span>สถิติผู้ป่วยหญิง</span>
+                    <ChevronRight aria-hidden="true" className="legacy-nav-chevron" />
                   </button>
                   <div className="legacy-submenu">
-                    {statisticLinks.female.map(([label, href]) => (
+                    {statisticLinks.female.map(([label, href, Icon]) => (
                       <Link key={href} href={href} className="legacy-dropdown-item" onClick={closeNavigation}>
+                        <Icon aria-hidden="true" className="legacy-nav-icon" />
                         {label}
                       </Link>
                     ))}
@@ -225,6 +268,7 @@ export default function Navbar({
                 </div>
 
                 <Link href="/statistics/incidents" className="legacy-dropdown-item" onClick={closeNavigation}>
+                  <TriangleAlert aria-hidden="true" className="legacy-nav-icon" />
                   สถิติผู้ป่วยอุบัติการณ์
                 </Link>
               </div>
@@ -244,6 +288,7 @@ export default function Navbar({
                 setUserOpen((current) => !current);
               }}
             >
+              <CircleUserRound aria-hidden="true" className="size-4 shrink-0" />
               <span className="truncate">{displayName}</span>
               <ChevronDown aria-hidden="true" className="size-3.5 shrink-0" />
             </button>
@@ -257,14 +302,16 @@ export default function Navbar({
                     onClick={closeNavigation}
                     className="mb-2 flex w-full items-center rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
                   >
+                    <ScrollText aria-hidden="true" className="mr-2 size-4 shrink-0" />
                     ประวัติการใช้งาน
                   </Link>
                 )}
                 <form action={logoutAction}>
                   <button
                     type="submit"
-                    className="w-full rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-600"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-600"
                   >
+                    <LogOut aria-hidden="true" className="size-4 shrink-0" />
                     ออกจากระบบ
                   </button>
                 </form>

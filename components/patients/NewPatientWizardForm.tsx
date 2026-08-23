@@ -471,7 +471,7 @@ function AddressStep() {
               </div>
             ) : null}
             {caregiverStatus === "อยู่คนเดียว" ? (
-              <FormField name="patientPhone" label="เบอร์โทรศัพท์ผู้ป่วย">
+              <FormField name="patientPhone" label="เบอร์โทรศัพท์ผู้ป่วย (ไม่บังคับ)">
                 <Input
                   id="patientPhone"
                   type="tel"
