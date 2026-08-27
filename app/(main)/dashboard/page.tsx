@@ -4,10 +4,35 @@ import DashboardCarousel, {
   type DashboardDoctor,
 } from "@/components/dashboard/DashboardCarousel";
 import { ChartLineLabel } from "@/components/dashboard/ChartLineLabel";
+import { SmivTrendCharts, type SmivTrendData } from "@/components/dashboard/SmivTrendCharts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const NON_SMIV_VALUE = "ไม่เข้าข่าย SMI-V";
 const GENDERS = ["ชาย", "หญิง"] as const;
+const THAI_MONTHS = [
+  "ม.ค.",
+  "ก.พ.",
+  "มี.ค.",
+  "เม.ย.",
+  "พ.ค.",
+  "มิ.ย.",
+  "ก.ค.",
+  "ส.ค.",
+  "ก.ย.",
+  "ต.ค.",
+  "พ.ย.",
+  "ธ.ค.",
+] as const;
+
+type DateRow = {
+  admit_date: string | null;
+  smi_type: string | null;
+};
+
+type IorTrendRow = {
+  record_date: string | null;
+  smi_type: string | null;
+};
 
 const DOCTORS: DashboardDoctor[] = [
   { id: "anya", name: "พญ. อนัญญา ชัยวัฒนพงศ์" },
@@ -74,6 +99,65 @@ function doctorCount(
       Boolean(row.admitting_doctor?.toLocaleLowerCase("th-TH").includes(last.toLocaleLowerCase("th-TH"))) &&
       predicate(row),
   );
+}
+
+function monthKey(dateValue: string) {
+  return dateValue.slice(0, 7);
+}
+
+function monthLabel(key: string) {
+  const [yearText, monthText] = key.split("-");
+  const monthIndex = Number(monthText) - 1;
+  const year = Number(yearText) + 543;
+  return `${THAI_MONTHS[monthIndex] ?? monthText} ${year}`;
+}
+
+function buildMonthlySeries(dates: string[]): SmivTrendData["admit"] {
+  const counts = new Map<string, number>();
+  for (const date of dates) {
+    const key = monthKey(date);
+    if (!/^\d{4}-\d{2}$/.test(key)) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const keys = [...counts.keys()].sort();
+  return keys.map((key) => ({
+    key,
+    label: monthLabel(key),
+    value: counts.get(key) ?? 0,
+  }));
+}
+
+function emptyTrendData(): SmivTrendData {
+  return { admit: [], ior: [] };
+}
+
+async function loadSmivTrendData(): Promise<SmivTrendData> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return emptyTrendData();
+
+  const [{ data: patients, error: patientsError }, { data: backup, error: backupError }, { data: ior, error: iorError }] = await Promise.all([
+    supabase.from("patients").select("admit_date, smi_type"),
+    supabase.from("backup").select("admit_date, smi_type"),
+    supabase.from("ior_statistics").select("record_date, smi_type"),
+  ]);
+
+  if (patientsError) console.error("SMI-V trend patients query failed", patientsError);
+  if (backupError) console.error("SMI-V trend backup query failed", backupError);
+  if (iorError) console.error("SMI-V trend IOR query failed", iorError);
+
+  const admitDates = ([...(patients ?? []), ...(backup ?? [])] as DateRow[])
+    .filter((row) => row.smi_type !== null && row.smi_type !== NON_SMIV_VALUE && row.admit_date)
+    .map((row) => row.admit_date as string);
+
+  const iorDates = (ior ?? [] as IorTrendRow[])
+    .filter((row) => row.smi_type !== null && row.smi_type !== NON_SMIV_VALUE && row.record_date)
+    .map((row) => row.record_date as string);
+
+  return {
+    admit: buildMonthlySeries(admitDates),
+    ior: buildMonthlySeries(iorDates),
+  };
 }
 
 async function loadDashboardData(): Promise<DashboardData> {
@@ -147,11 +231,12 @@ function emptyDashboardData(): DashboardData {
 }
 
 export default async function HomePage() {
-  const data = await loadDashboardData();
+  const [data, trendData] = await Promise.all([loadDashboardData(), loadSmivTrendData()]);
   return (
     <>
       <DashboardCarousel data={data} />
       <ChartLineLabel />
+      <SmivTrendCharts data={trendData} />
     </>
   );
 }
