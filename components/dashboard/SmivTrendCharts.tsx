@@ -139,7 +139,7 @@ function TrendChart({
 }) {
   const safeData = data.length > 0 ? data : [{ key: "empty", label: "ยังไม่มีข้อมูล", value: 0 }];
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showTable, setShowTable] = useState(true);
+  const [showTable, setShowTable] = useState(false);
   const cardRef = useRef<HTMLElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
