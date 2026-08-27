@@ -3,6 +3,7 @@ import DashboardCarousel, {
   type DashboardPatientRow,
   type DashboardDoctor,
 } from "@/components/dashboard/DashboardCarousel";
+import { ChartLineLabel } from "@/components/dashboard/ChartLineLabel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const NON_SMIV_VALUE = "ไม่เข้าข่าย SMI-V";
@@ -147,5 +148,10 @@ function emptyDashboardData(): DashboardData {
 
 export default async function HomePage() {
   const data = await loadDashboardData();
-  return <DashboardCarousel data={data} />;
+  return (
+    <>
+      <DashboardCarousel data={data} />
+      <ChartLineLabel />
+    </>
+  );
 }
