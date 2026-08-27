@@ -101,6 +101,10 @@ function doctorCount(
   );
 }
 
+function monthKeyFromDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function monthKey(dateValue: string) {
   return dateValue.slice(0, 7);
 }
@@ -112,6 +116,16 @@ function monthLabel(key: string) {
   return `${THAI_MONTHS[monthIndex] ?? monthText} ${year}`;
 }
 
+function getLastEightMonthKeys() {
+  const now = new Date();
+  const keys: string[] = [];
+  for (let offset = 7; offset >= 0; offset -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    keys.push(monthKeyFromDate(date));
+  }
+  return keys;
+}
+
 function buildMonthlySeries(dates: string[]): SmivTrendData["admit"] {
   const counts = new Map<string, number>();
   for (const date of dates) {
@@ -120,8 +134,7 @@ function buildMonthlySeries(dates: string[]): SmivTrendData["admit"] {
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
-  const keys = [...counts.keys()].sort();
-  return keys.map((key) => ({
+  return getLastEightMonthKeys().map((key) => ({
     key,
     label: monthLabel(key),
     value: counts.get(key) ?? 0,
@@ -129,7 +142,8 @@ function buildMonthlySeries(dates: string[]): SmivTrendData["admit"] {
 }
 
 function emptyTrendData(): SmivTrendData {
-  return { admit: [], ior: [] };
+  const empty = buildMonthlySeries([]);
+  return { admit: empty, ior: empty };
 }
 
 async function loadSmivTrendData(): Promise<SmivTrendData> {
