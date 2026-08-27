@@ -3,7 +3,6 @@ import DashboardCarousel, {
   type DashboardPatientRow,
   type DashboardDoctor,
 } from "@/components/dashboard/DashboardCarousel";
-import { ChartLineLabel } from "@/components/dashboard/ChartLineLabel";
 import { SmivTrendCharts, type SmivTrendData } from "@/components/dashboard/SmivTrendCharts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -249,7 +248,6 @@ export default async function HomePage() {
   return (
     <>
       <DashboardCarousel data={data} />
-      <ChartLineLabel />
       <SmivTrendCharts data={trendData} />
     </>
   );
