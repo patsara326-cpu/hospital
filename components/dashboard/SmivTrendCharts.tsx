@@ -123,7 +123,7 @@ async function downloadXls(data: MonthlyPoint[], filename: string) {
   );
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "ข้อมูล");
-  XLSX.writeFile(workbook, filename);
+  XLSX.writeFile(workbook, filename, { bookType: "xls" });
 }
 
 function TrendChart({
@@ -230,7 +230,7 @@ function TrendChart({
       label: "Download XLS",
       icon: FileSpreadsheet,
       onClick: () => {
-        void downloadXls(data, `${slug}.xlsx`);
+        void downloadXls(data, `${slug}.xls`);
       },
     },
     {
