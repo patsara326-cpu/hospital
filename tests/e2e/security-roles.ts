@@ -93,16 +93,41 @@ async function seedClinicalRows(admin: SupabaseClient, hn: string) {
       age: 30,
       smi_type: "SMI-V 1",
       admit_date: "2026-08-19",
+      raw_data: {
+        hn,
+        first_name: "QA Security",
+        last_name: "Sentinel",
+        gender: "ชาย",
+        admission_date: "2026-08-19",
+        smi_v_result: "SMI-V 1",
+      },
     }),
     admin.from("assessments").insert({
       hn,
-      record_type: "security-test",
+      record_type: "smi-v_admission",
       assess_date: "2026-08-19",
+      raw_data: {
+        hn,
+        first_name: "QA Security",
+        last_name: "Sentinel",
+        gender: "ชาย",
+        admission_date: "2026-08-19",
+        smi_v_result: "SMI-V 1",
+      },
     }),
     admin.from("backup").insert({
       hn,
       full_name: "QA Security Sentinel",
+      gender: "ชาย",
       discharge_date: "2026-08-19",
+      raw_data: {
+        hn,
+        first_name: "QA Security",
+        last_name: "Sentinel",
+        gender: "ชาย",
+        admission_date: "2026-08-19",
+        smi_v_result: "SMI-V 1",
+      },
     }),
     admin.from("ior_records").insert({
       hn,
@@ -150,6 +175,50 @@ async function assertReadMatrix(sessions: RoleSession[], sentinelHn: string) {
       .select("id")
       .eq("hn", sentinelHn);
     expectRows(viewResult, session.role === "pending" ? 0 : 1, `${session.role}: read ior_statistics`);
+
+    const optimizedViews = [
+      ["current_ipd_rows", 1],
+      ["admission_statistics_rows", 2],
+      ["discharge_statistics_rows", 1],
+    ] as const;
+    for (const [view, allowedCount] of optimizedViews) {
+      const result = await session.client.from(view).select("id").eq("hn", sentinelHn);
+      expectRows(
+        result,
+        session.role === "pending" ? 0 : allowedCount,
+        `${session.role}: read ${view}`,
+      );
+    }
+
+    const dashboardResult = await session.client
+      .from("dashboard_patient_groups")
+      .select("patient_count")
+      .eq("gender", "ชาย");
+    assert.equal(dashboardResult.error, null, `${session.role}: dashboard view read error`);
+    if (session.role === "pending") {
+      assert.equal(dashboardResult.data?.length ?? 0, 0, "pending: dashboard view exposed rows");
+    } else {
+      assert.ok(
+        (dashboardResult.data ?? []).some((row) => Number(row.patient_count) >= 1),
+        `${session.role}: dashboard view did not include the synthetic patient`,
+      );
+    }
+
+    const reportYearsResult = await session.client
+      .from("statistics_report_years")
+      .select("report_year")
+      .eq("report_type", "admission")
+      .eq("gender", "ชาย")
+      .eq("report_year", 2026);
+    assert.equal(reportYearsResult.error, null, `${session.role}: report years read error`);
+    if (session.role === "pending") {
+      assert.equal(reportYearsResult.data?.length ?? 0, 0, "pending: report years exposed rows");
+    } else {
+      assert.ok(
+        (reportYearsResult.data?.length ?? 0) >= 1,
+        `${session.role}: report years omitted the synthetic admission year`,
+      );
+    }
 
     const auditResult = await session.client
       .from("audit_log")

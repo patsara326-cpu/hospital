@@ -1,4 +1,5 @@
 import IpdList, { type IpdPatientRecord } from "@/components/ipd/IpdList";
+import { isMissingRelationError } from "@/lib/supabase/errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
@@ -14,9 +15,83 @@ function textValue(value: unknown): string {
   return typeof value === "string" || typeof value === "number" ? String(value) : "";
 }
 
+function assignIfPresent(
+  target: Record<string, unknown>,
+  key: string,
+  value: unknown,
+) {
+  if (value !== null && value !== undefined) target[key] = value;
+}
+
+function recordFromView(
+  row: Record<string, unknown>,
+): IpdPatientRecord {
+  const rawData = { ...asRecord(row.extra_data) };
+
+  for (const key of [
+    "first_name",
+    "last_name",
+    "smi_v_result",
+    "substance_use",
+    "substance_type",
+    "diagnosis",
+    "admission_source",
+    "oas_risk_level",
+    "aggressive_behavior",
+    "residence_type",
+    "residence_district",
+    "residence_subdistrict",
+    "residence_details",
+    "caregiver_status",
+    "caregiver_name",
+    "caregiver_relation",
+    "caregiver_phone",
+    "patient_phone",
+    "is_smi_v",
+  ]) {
+    assignIfPresent(rawData, key, row[key]);
+  }
+
+  Object.assign(rawData, {
+    id: row.id ?? null,
+    hn: row.hn ?? null,
+    prefix: row.prefix ?? null,
+    full_name: row.full_name ?? null,
+    gender: row.gender ?? null,
+    age: row.age ?? null,
+    smi_type: row.smi_type ?? null,
+    substance: row.substance ?? null,
+    admission_date: row.admission_date ?? null,
+    admitting_doctor: row.admitting_doctor ?? null,
+    oas_score: row.oas_score ?? null,
+    oas_risk: row.oas_risk ?? null,
+  });
+
+  return { hn: textValue(row.hn), rawData };
+}
+
 async function loadIpdRecords(gender: "ชาย" | "หญิง") {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { records: [] as IpdPatientRecord[], error: "ยังไม่ได้ตั้งค่า Supabase environment variables" };
+
+  const viewResult = await supabase
+    .from("current_ipd_rows")
+    .select(
+      "id, hn, prefix, full_name, first_name, last_name, gender, age, smi_type, smi_v_result, substance, substance_use, substance_type, admission_date, admitting_doctor, diagnosis, admission_source, oas_score, oas_risk, oas_risk_level, aggressive_behavior, residence_type, residence_district, residence_subdistrict, residence_details, caregiver_status, caregiver_name, caregiver_relation, caregiver_phone, patient_phone, is_smi_v, extra_data, created_at",
+    )
+    .eq("gender", gender)
+    .order("created_at", { ascending: false });
+
+  if (!viewResult.error) {
+    return {
+      records: (viewResult.data ?? []).map((row) => recordFromView(row)),
+      error: null,
+    };
+  }
+
+  if (!isMissingRelationError(viewResult.error)) {
+    return { records: [] as IpdPatientRecord[], error: viewResult.error.message };
+  }
 
   // `patients` is the source of truth for current inpatients; discharged HNs live in backup.
   const { data: patientRows, error: patientError } = await supabase

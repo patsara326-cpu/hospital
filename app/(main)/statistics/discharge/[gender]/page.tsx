@@ -3,10 +3,19 @@ import { notFound } from "next/navigation";
 import DischargeStatistics, {
   type DischargeStatisticRow,
 } from "@/components/statistics/DischargeStatistics";
+import {
+  loadDischargeReportPage,
+  loadReportYears,
+} from "@/lib/statistics/report-data";
+import {
+  parseStatisticReportFilters,
+  REPORT_PAGE_SIZE,
+} from "@/lib/statistics/report-filters";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type PageProps = {
   params: Promise<{ gender: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 const GENDER_CONFIG = {
@@ -14,70 +23,43 @@ const GENDER_CONFIG = {
   female: { label: "หญิง", title: "สถิติผู้ป่วยจำหน่ายหอผู้ป่วยจิตเวชหญิง" },
 } as const;
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function textValue(value: unknown): string | null {
-  return typeof value === "string" || typeof value === "number"
-    ? String(value)
-    : null;
-}
-
 export default async function DischargeStatisticsPage({
   params,
+  searchParams,
 }: PageProps) {
-  const { gender } = await params;
+  const [{ gender }, rawFilters] = await Promise.all([params, searchParams]);
   const config = GENDER_CONFIG[gender as keyof typeof GENDER_CONFIG];
+  if (!config) notFound();
 
-  if (!config) {
-    notFound();
-  }
-
+  const filters = parseStatisticReportFilters(rawFilters);
   const supabase = await createSupabaseServerClient();
   let rows: DischargeStatisticRow[] = [];
+  let years: number[] = [];
+  let total = 0;
   let error: string | null = null;
 
   if (!supabase) {
     error = "ยังไม่ได้ตั้งค่า Supabase environment variables";
   } else {
-    const { data, error: queryError } = await supabase
-      .from("backup")
-      .select(
-        "id, raw_data, discharge_date, discharge_type, last_diagnosis, smi_type, admitting_doctor, full_name, hn, gender",
-      )
-      .eq("gender", config.label)
-      .not("discharge_date", "is", null);
+    const [reportResult, yearsResult] = await Promise.all([
+      loadDischargeReportPage(supabase, config.label, filters),
+      loadReportYears(supabase, "discharge", config.label),
+    ]);
 
-    if (queryError) {
-      error = queryError.message;
+    if (reportResult.error || yearsResult.error) {
+      console.error(
+        "Discharge server-filtered report failed",
+        reportResult.error?.code ?? yearsResult.error?.code ?? "unknown",
+      );
+      error = "ไม่สามารถโหลดข้อมูลสถิติจำหน่ายได้";
+    } else {
+      rows = (reportResult.data ?? []).flatMap((entry) => {
+        if (!entry.id || !entry.discharge_date) return [];
+        return [{ ...entry, id: entry.id, discharge_date: entry.discharge_date }];
+      });
+      years = yearsResult.years;
+      total = reportResult.count ?? 0;
     }
-
-    rows = (data ?? []).flatMap((entry) => {
-      const rawData = asRecord(entry.raw_data) ?? {};
-      const id = textValue(entry.id);
-      const hn = textValue(entry.hn);
-      const dischargeDate = textValue(entry.discharge_date);
-
-      if (!dischargeDate) return [];
-
-      return [
-        {
-          id: id ?? `${hn ?? "unknown"}-${dischargeDate}`,
-          hn,
-          full_name: textValue(entry.full_name),
-          gender: textValue(entry.gender),
-          discharge_date: dischargeDate,
-          discharge_type: textValue(entry.discharge_type),
-          last_diagnosis: textValue(entry.last_diagnosis),
-          smi_type: textValue(entry.smi_type),
-          admitting_doctor: textValue(entry.admitting_doctor),
-          raw_data: rawData,
-        },
-      ];
-    });
   }
 
   return (
@@ -85,6 +67,11 @@ export default async function DischargeStatisticsPage({
       genderLabel={config.label}
       title={config.title}
       initialRows={rows}
+      total={total}
+      years={years}
+      filters={filters}
+      pageSize={REPORT_PAGE_SIZE}
+      routePath={`/statistics/discharge/${gender}`}
       error={error}
     />
   );

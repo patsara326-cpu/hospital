@@ -335,6 +335,28 @@ export type Database = {
       }
     }
     Views: {
+      admission_statistics_rows: {
+        Row: {
+          admission_date: string | null
+          admitting_doctor: string | null
+          diagnosis: string | null
+          first_name: string | null
+          full_name: string | null
+          gender: string | null
+          hn: string | null
+          id: string | null
+          last_name: string | null
+          residence_details: string | null
+          residence_district: string | null
+          residence_type: string | null
+          report_date: string | null
+          report_month: number | null
+          report_year: number | null
+          smi_v_result: string | null
+          substance_type: string | null
+        }
+        Relationships: []
+      }
       admin_log_entries: {
         Row: {
           actor_display_name: string | null
@@ -354,6 +376,78 @@ export type Database = {
         }
         Relationships: []
       }
+      current_ipd_rows: {
+        Row: {
+          admission_date: string | null
+          admission_source: string | null
+          admitting_doctor: string | null
+          age: number | null
+          aggressive_behavior: string | null
+          assessment_admit_date: string | null
+          caregiver_name: string | null
+          caregiver_phone: string | null
+          caregiver_relation: string | null
+          caregiver_status: string | null
+          created_at: string | null
+          diagnosis: string | null
+          extra_data: Json | null
+          first_name: string | null
+          full_name: string | null
+          gender: string | null
+          hn: string | null
+          id: string | null
+          is_smi_v: Json | null
+          last_name: string | null
+          oas_risk: string | null
+          oas_risk_level: string | null
+          oas_score: number | null
+          patient_phone: string | null
+          prefix: string | null
+          residence_details: string | null
+          residence_district: string | null
+          residence_subdistrict: string | null
+          residence_type: string | null
+          smi_type: string | null
+          smi_v_result: string | null
+          substance: string | null
+          substance_type: string | null
+          substance_use: string | null
+        }
+        Relationships: []
+      }
+      dashboard_patient_groups: {
+        Row: {
+          admitting_doctor: string | null
+          gender: string | null
+          oas_score: number | null
+          patient_count: number | null
+          smi_type: string | null
+        }
+        Relationships: []
+      }
+      discharge_statistics_rows: {
+        Row: {
+          admitting_doctor: string | null
+          discharge_date: string | null
+          discharge_type: string | null
+          first_name: string | null
+          full_name: string | null
+          gender: string | null
+          hn: string | null
+          id: string | null
+          last_diagnosis: string | null
+          last_name: string | null
+          residence_details: string | null
+          residence_district: string | null
+          residence_type: string | null
+          report_date: string | null
+          report_month: number | null
+          report_year: number | null
+          smi_type: string | null
+          substance_type: string | null
+        }
+        Relationships: []
+      }
       ior_statistics: {
         Row: {
           behaviors: Json | null
@@ -365,6 +459,14 @@ export type Database = {
           level: string | null
           record_date: string | null
           smi_type: string | null
+        }
+        Relationships: []
+      }
+      statistics_report_years: {
+        Row: {
+          gender: string | null
+          report_type: string | null
+          report_year: number | null
         }
         Relationships: []
       }
@@ -385,6 +487,7 @@ export type Database = {
         Args: { p_event_type: string; p_metadata?: Json }
         Returns: number
       }
+      try_report_date: { Args: { value: string }; Returns: string | null }
       register_patient_with_assessment: {
         Args: { p_assessment: Json; p_profile: Json }
         Returns: Json

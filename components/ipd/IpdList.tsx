@@ -63,7 +63,8 @@ function displayValue(key: string, value: unknown) {
 function patientName(rawData: Record<string, unknown>) {
   const firstName = typeof rawData.first_name === "string" ? rawData.first_name : "";
   const lastName = typeof rawData.last_name === "string" ? rawData.last_name : "";
-  return `${firstName} ${lastName}`.trim() || "-";
+  const structuredName = typeof rawData.full_name === "string" ? rawData.full_name : "";
+  return `${firstName} ${lastName}`.trim() || structuredName || "-";
 }
 
 function patientHn(record: IpdPatientRecord) {

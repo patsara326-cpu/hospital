@@ -47,7 +47,10 @@ function countBy(
   rows: DashboardPatientRow[],
   predicate: (row: DashboardPatientRow) => boolean,
 ) {
-  return rows.reduce((count, row) => count + (predicate(row) ? 1 : 0), 0);
+  return rows.reduce(
+    (count, row) => count + (predicate(row) ? row.patient_count : 0),
+    0,
+  );
 }
 
 function isGeneral(row: DashboardPatientRow) {
@@ -176,19 +179,42 @@ async function loadSmivTrendData(): Promise<SmivTrendData> {
 async function loadDashboardData(): Promise<DashboardData> {
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
-    return emptyDashboardData();
+    throw new Error("ยังไม่ได้ตั้งค่า Supabase environment variables");
   }
 
-  const { data, error } = await supabase
-    .from("patients")
-    .select("gender, smi_type, oas_score, admitting_doctor");
+  const groupedResult = await supabase
+    .from("dashboard_patient_groups")
+    .select("gender, smi_type, oas_score, admitting_doctor, patient_count");
 
-  if (error) {
-    console.error("Dashboard patient summary query failed", error);
-    return emptyDashboardData();
+  let rows: DashboardPatientRow[];
+
+  if (!groupedResult.error) {
+    rows = (groupedResult.data ?? []).map((row) => ({
+      gender: row.gender,
+      smi_type: row.smi_type,
+      oas_score: row.oas_score,
+      admitting_doctor: row.admitting_doctor,
+      patient_count: Number(row.patient_count ?? 0),
+    }));
+  } else if (isMissingRelationError(groupedResult.error)) {
+    const legacyResult = await supabase
+      .from("patients")
+      .select("gender, smi_type, oas_score, admitting_doctor");
+
+    if (legacyResult.error) {
+      console.error("Dashboard patient summary query failed", legacyResult.error.code);
+      throw new Error("ไม่สามารถโหลดข้อมูล dashboard ได้");
+    }
+
+    rows = (legacyResult.data ?? []).map((row) => ({
+      ...row,
+      patient_count: 1,
+    }));
+  } else {
+    console.error("Dashboard grouped query failed", groupedResult.error.code);
+    throw new Error("ไม่สามารถโหลดข้อมูล dashboard ได้");
   }
 
-  const rows = (data ?? []) as DashboardPatientRow[];
   const genderRows = GENDERS.map((gender) => {
     const filterGender = (row: DashboardPatientRow) => row.gender === gender;
     return {
@@ -212,33 +238,11 @@ async function loadDashboardData(): Promise<DashboardData> {
   }));
 
   return {
-    total: rows.length,
+    total: countBy(rows, () => true),
     general: countBy(rows, isGeneral),
     smiv: countBy(rows, isSmiv),
     wards: genderRows,
     doctors,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-function emptyDashboardData(): DashboardData {
-  return {
-    total: 0,
-    general: 0,
-    smiv: 0,
-    wards: GENDERS.map((gender) => ({
-      gender,
-      total: 0,
-      general: 0,
-      smiv: 0,
-      smivTypes: [0, 0, 0, 0],
-    })),
-    doctors: DOCTORS.map((doctor) => ({
-      ...doctor,
-      total: 0,
-      general: 0,
-      smiv: 0,
-    })),
     updatedAt: new Date().toISOString(),
   };
 }

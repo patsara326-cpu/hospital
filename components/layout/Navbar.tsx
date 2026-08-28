@@ -151,7 +151,7 @@ export default function Navbar({
 
           <Link href="/dashboard" className="legacy-brand" onClick={closeNavigation}>
             <Hospital aria-hidden="true" className="size-5 shrink-0 text-sky-200" />
-            <span className="truncate">ระบบผู้ป่วยจิตเวช</span>
+            <span className="truncate">SMIV smart click</span>
           </Link>
 
           <nav

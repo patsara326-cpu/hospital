@@ -1,45 +1,60 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import { FilterSelect, StatisticsPage } from "@/components/statistics/StatisticsPage";
 import {
-  matchesStatisticSmiFilter,
   STATISTIC_MONTHS,
   STATISTIC_RESIDENCE_OPTIONS,
   STATISTIC_SMI_OPTIONS,
 } from "@/lib/constants/statistics";
+import {
+  filtersToSearchParams,
+  type StatisticReportFilters,
+} from "@/lib/statistics/report-filters";
 import { downloadExcelFile } from "@/lib/utils/export";
-import { formatDateBE, getThailandDateParts } from "@/lib/utils/date";
+import { formatDateBE } from "@/lib/utils/date";
 
 export type AdmissionStatisticRow = {
   id: string;
-  raw_data: Record<string, unknown>;
+  admission_date: string;
+  admitting_doctor: string | null;
+  diagnosis: string | null;
+  first_name: string | null;
+  full_name: string | null;
+  hn: string | null;
+  last_name: string | null;
+  residence_details: string | null;
+  residence_district: string | null;
+  residence_type: string | null;
+  smi_v_result: string | null;
+  substance_type: string | null;
 };
 
 type Props = {
-  genderLabel: string;
+  genderLabel: "ชาย" | "หญิง";
   title: string;
   initialRows: AdmissionStatisticRow[];
+  total: number;
+  years: number[];
+  filters: StatisticReportFilters;
+  pageSize: number;
+  routePath: string;
   error: string | null;
 };
 
-function textValue(row: AdmissionStatisticRow, key: string): string {
-  const value = row.raw_data[key];
-  return typeof value === "string" || typeof value === "number" ? String(value) : "";
-}
-
 function admissionDate(row: AdmissionStatisticRow): string {
-  return textValue(row, "admission_date") || textValue(row, "admit_date");
+  return row.admission_date;
 }
 
 function displayName(row: AdmissionStatisticRow): string {
-  const fullName = `${textValue(row, "first_name")} ${textValue(row, "last_name")}`.trim();
-  return fullName || textValue(row, "full_name") || "-";
+  const fullName = `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim();
+  return fullName || row.full_name || "-";
 }
 
 function displaySubstance(row: AdmissionStatisticRow): string {
-  const substance = textValue(row, "substance_type").trim();
+  const substance = row.substance_type?.trim() ?? "";
   return substance || "ไม่ใช้";
 }
 
@@ -47,78 +62,42 @@ export default function AdmissionStatistics({
   genderLabel,
   title,
   initialRows,
+  total,
+  years,
+  filters,
+  pageSize,
+  routePath,
   error,
 }: Props) {
-  const [month, setMonth] = useState("");
-  const [year, setYear] = useState("");
-  const [smiv, setSmiv] = useState("");
-  const [residence, setResidence] = useState("");
+  const router = useRouter();
+  const [navigationPending, startNavigation] = useTransition();
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const years = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          initialRows
-            .map((row) => getThailandDateParts(admissionDate(row)))
-            .filter((date): date is NonNullable<typeof date> => date !== null)
-            .map((date) => date.year + 543),
-        ),
-      ).sort((a, b) => b - a),
-    [initialRows],
-  );
+  function navigate(changes: Partial<StatisticReportFilters>) {
+    const params = filtersToSearchParams(filters, changes);
+    const query = params.toString();
+    startNavigation(() => router.replace(query ? `${routePath}?${query}` : routePath, { scroll: false }));
+  }
 
-  const filteredRows = useMemo(() => {
-    return initialRows.filter((row) => {
-      const date = getThailandDateParts(admissionDate(row));
-      if ((month || year) && !date) return false;
-      if (month && (!date || date.month !== Number(month))) return false;
-      if (year && (!date || date.year + 543 !== Number(year))) return false;
-
-      if (!matchesStatisticSmiFilter(textValue(row, "smi_v_result"), smiv)) return false;
-
-      if (residence === "เร่ร่อน") {
-        if (!textValue(row, "residence_type").includes("เร่ร่อน")) return false;
-      } else if (residence && textValue(row, "residence_district") !== residence) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [initialRows, month, residence, smiv, year]);
-
-  const exportRows = filteredRows.map((row) => [
-    formatDateBE(admissionDate(row)),
-    textValue(row, "hn") || "-",
-    displayName(row),
-    textValue(row, "diagnosis") || "-",
-    textValue(row, "smi_v_result") || "-",
-    displaySubstance(row),
-    textValue(row, "admitting_doctor") || "-",
-    textValue(row, "residence_details") || "-",
-  ]);
+  function changeFilter(
+    key: "month" | "year" | "smiv" | "residence",
+    value: string,
+  ) {
+    navigate({ [key]: value, page: 1 });
+  }
 
   async function exportAsExcel() {
     await downloadExcelFile({
+      source: "database",
       reportType: "admission",
       filename: `สถิติผู้ป่วยรับใหม่${genderLabel}.xlsx`,
       sheetName: `รับใหม่${genderLabel}`,
-      headers: [
-        "Admit",
-        "HN",
-        "ชื่อ-นามสกุล",
-        "Dx.แรกรับ",
-        "SMIV",
-        "การใช้สารเสพติด",
-        "แพทย์ที่รับผิดชอบ",
-        "ที่อยู่",
-      ],
-      rows: exportRows,
       filters: {
         gender: genderLabel,
-        month,
-        year,
-        smi_filter: smiv,
-        residence_filter: residence,
+        month: filters.month,
+        year: filters.year,
+        smi_filter: filters.smiv,
+        residence_filter: filters.residence,
       },
     });
   }
@@ -127,21 +106,21 @@ export default function AdmissionStatistics({
     <StatisticsPage
       title={title}
       totalLabel="ยอดรวมผู้ป่วยรับใหม่"
-      total={filteredRows.length}
+      total={total}
       error={error}
       onExport={exportAsExcel}
       filters={
         <>
-          <FilterSelect label="เดือน" value={month} onChange={setMonth}>
+          <FilterSelect label="เดือน" value={filters.month} onChange={(value) => changeFilter("month", value)}>
             {STATISTIC_MONTHS.map((item, index) => <option key={item} value={index + 1}>{item}</option>)}
           </FilterSelect>
-          <FilterSelect label="ปี (พ.ศ.)" value={year} onChange={setYear}>
+          <FilterSelect label="ปี (พ.ศ.)" value={filters.year} onChange={(value) => changeFilter("year", value)}>
             {years.map((item) => <option key={item} value={item}>{item}</option>)}
           </FilterSelect>
-          <FilterSelect label="ประเภทผู้ป่วย (SMI-V)" value={smiv} onChange={setSmiv}>
+          <FilterSelect label="ประเภทผู้ป่วย (SMI-V)" value={filters.smiv} onChange={(value) => changeFilter("smiv", value)}>
             {STATISTIC_SMI_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </FilterSelect>
-          <FilterSelect label="ที่อยู่" value={residence} onChange={setResidence}>
+          <FilterSelect label="ที่อยู่" value={filters.residence} onChange={(value) => changeFilter("residence", value)}>
             {STATISTIC_RESIDENCE_OPTIONS.map((item) => <option key={item} value={item}>{item === "เร่ร่อน" ? "เร่ร่อน/อยู่สถานสงเคราะห์" : item}</option>)}
           </FilterSelect>
         </>
@@ -155,22 +134,43 @@ export default function AdmissionStatistics({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
-              {filteredRows.length === 0 ? (
+              {initialRows.length === 0 ? (
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">ไม่พบข้อมูลสถิติ</td></tr>
-              ) : filteredRows.map((row, index) => (
+              ) : initialRows.map((row, index) => (
                 <tr key={`${row.id}-${index}`} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-3 py-2 text-slate-700">{formatDateBE(admissionDate(row))}</td>
-                  <td className="px-3 py-2 font-medium text-slate-800">{textValue(row, "hn") || "-"}</td>
+                  <td className="px-3 py-2 font-medium text-slate-800">{row.hn || "-"}</td>
                   <td className="px-3 py-2 text-slate-700">{displayName(row)}</td>
-                  <td className="px-3 py-2 text-slate-700">{textValue(row, "diagnosis") || "-"}</td>
-                  <td className="px-3 py-2 text-slate-700">{textValue(row, "smi_v_result") || "-"}</td>
+                  <td className="px-3 py-2 text-slate-700">{row.diagnosis || "-"}</td>
+                  <td className="px-3 py-2 text-slate-700">{row.smi_v_result || "-"}</td>
                   <td className="px-3 py-2 text-slate-700">{displaySubstance(row)}</td>
-                  <td className="px-3 py-2 text-slate-700">{textValue(row, "admitting_doctor") || "-"}</td>
-                  <td className="px-3 py-2 text-slate-700">{textValue(row, "residence_details") || "-"}</td>
+                  <td className="px-3 py-2 text-slate-700">{row.admitting_doctor || "-"}</td>
+                  <td className="px-3 py-2 text-slate-700">{row.residence_details || "-"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+          <span>{navigationPending ? "กำลังโหลดข้อมูล..." : `หน้า ${filters.page} จาก ${totalPages}`}</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={navigationPending || filters.page <= 1}
+              onClick={() => navigate({ page: filters.page - 1 })}
+            >
+              ก่อนหน้า
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={navigationPending || filters.page >= totalPages}
+              onClick={() => navigate({ page: filters.page + 1 })}
+            >
+              ถัดไป
+            </button>
+          </div>
         </div>
     </StatisticsPage>
   );

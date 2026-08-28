@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isMissingRelationError } from "@/lib/supabase/errors";
 import { assessmentSchema } from "@/lib/validation/assessment";
 import { calculateRisk } from "@/lib/utils/risk";
 
@@ -61,6 +62,38 @@ export async function loadAssessmentPatientsAction(gender: string): Promise<Asse
   if (gender !== "ชาย" && gender !== "หญิง") return { patients: [], error: "ไม่พบเพศผู้ป่วยที่เลือก" };
   const { supabase, error: accessError } = await getAuthorizedSupabase();
   if (!supabase) return { patients: [], error: accessError };
+
+  const viewResult = await supabase
+    .from("current_ipd_rows")
+    .select(
+      "hn, prefix, full_name, gender, age, smi_type, admission_date, admitting_doctor, substance, assessment_admit_date",
+    )
+    .eq("gender", gender);
+
+  if (!viewResult.error) {
+    return {
+      patients: (viewResult.data ?? []).flatMap((row) => {
+        if (!row.hn) return [];
+        return [{
+          hn: row.hn,
+          prefix: row.prefix,
+          full_name: row.full_name,
+          gender: row.gender,
+          age: row.age,
+          smi_type: row.smi_type,
+          admit_date: row.admission_date,
+          admitting_doctor: row.admitting_doctor,
+          substance: row.substance,
+          assessment_admit_date: row.assessment_admit_date,
+        }];
+      }),
+      error: "",
+    };
+  }
+
+  if (!isMissingRelationError(viewResult.error)) {
+    return { patients: [], error: viewResult.error.message };
+  }
 
   const { data, error } = await supabase.from("patients").select("*").eq("gender", gender);
   if (error) return { patients: [], error: error.message };

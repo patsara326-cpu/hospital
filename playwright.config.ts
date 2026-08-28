@@ -4,6 +4,7 @@ import { getPhase5Env } from "./tests/e2e/env";
 
 const phase5Env = getPhase5Env();
 const baseURL = phase5Env.E2E_BASE_URL;
+const video = process.env.E2E_DISABLE_VIDEO === "1" ? "off" : "retain-on-failure";
 const localTarget = new URL(baseURL).hostname === "127.0.0.1"
   || new URL(baseURL).hostname === "localhost";
 
@@ -20,7 +21,7 @@ export default defineConfig({
     channel: "chrome",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video,
     acceptDownloads: true,
   },
   webServer: localTarget ? {

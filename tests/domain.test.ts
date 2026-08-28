@@ -13,6 +13,11 @@ import {
   getEventLabel,
 } from "../lib/logs/event-labels.ts";
 import {
+  filtersToSearchParams,
+  parseStatisticReportFilters,
+  reportDateBounds,
+} from "../lib/statistics/report-filters.ts";
+import {
   formatDateBE,
   formatDateLongBE,
   formatDateTimeBE,
@@ -219,6 +224,73 @@ test("Supabase hardening migration covers every sensitive table and atomic workf
   assert.match(sql, /set search_path = ''/i);
 });
 
+test("low-risk performance migration preserves role rules and adds query indexes", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260823000700_low_risk_performance.sql", import.meta.url),
+    "utf8",
+  );
+
+  for (const policy of [
+    "users_select_own_or_privileged",
+    "patients_staff_read",
+    "assessments_staff_read",
+    "backup_staff_read",
+    "ior_staff_read",
+    "audit_privileged_read",
+    "activity_log_privileged_read",
+  ]) {
+    assert.match(sql, new RegExp(`alter policy ${policy}`, "i"));
+  }
+
+  assert.match(sql, /\(select auth\.uid\(\)\)/i);
+  assert.match(sql, /\(select public\.current_app_role\(\)\)/i);
+  assert.match(sql, /patients \(gender, created_at desc\)/i);
+  assert.match(sql, /assessments \(hn, record_type, assess_date desc, created_at desc\)/i);
+  assert.match(sql, /backup \(gender, discharge_date desc\)[\s\S]+where discharge_date is not null/i);
+});
+
+test("read-optimized views preserve RLS and project raw data server-side", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260827000800_read_optimized_views.sql", import.meta.url),
+    "utf8",
+  );
+
+  for (const view of [
+    "admission_statistics_rows",
+    "discharge_statistics_rows",
+    "current_ipd_rows",
+    "dashboard_patient_groups",
+  ]) {
+    assert.match(
+      sql,
+      new RegExp(`create or replace view public\\.${view}\\s+with \\(security_invoker = true\\)`, "i"),
+    );
+    assert.match(sql, new RegExp(`revoke all on public\\.${view} from public, anon`, "i"));
+    assert.match(sql, new RegExp(`grant select on public\\.${view} to authenticated`, "i"));
+  }
+
+  assert.match(sql, /row_number\(\)[\s\S]+partition by[\s\S]+admission_rank = 1/i);
+  assert.match(
+    sql,
+    /record_type = 'smi-v_admission'[\s\S]+assess_date desc nulls last[\s\S]+created_at desc[\s\S]+id desc/i,
+  );
+  assert.match(sql, /count\(\*\) as patient_count[\s\S]+group by/i);
+  assert.doesNotMatch(sql, /grant select[\s\S]+to anon/i);
+});
+
+test("remote load tests require an explicit staging origin allowlist", () => {
+  const script = readFileSync(
+    new URL("../scripts/performance/load-test.mjs", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(script, /PERF_ALLOW_REMOTE[^\n]+staging-only/i);
+  assert.match(script, /PERF_STAGING_ORIGIN/);
+  assert.match(script, /target\.origin !== stagingOrigin/);
+  assert.match(script, /PERF_PRODUCTION_ORIGIN/);
+  assert.match(script, /Refusing to load test the production origin/);
+});
+
 test("IOR history survives discharge and resolves patient details from the matching archive", () => {
   const sql = readFileSync(
     new URL("../supabase/migrations/20260821000500_preserve_ior_on_discharge.sql", import.meta.url),
@@ -251,6 +323,75 @@ test("report export validation permits only bounded, safe workbook payloads", ()
     rows: [["QA-001", "extra"]],
     filters: {},
   }).success, false);
+
+  assert.equal(reportExportSchema.safeParse({
+    source: "database",
+    reportType: "discharge",
+    filename: "discharge.xlsx",
+    sheetName: "Discharge",
+    filters: {
+      gender: "หญิง",
+      month: "12",
+      year: "2569",
+      smi_filter: "SMI-V",
+      residence_filter: "นอกจังหวัด",
+    },
+  }).success, true);
+  assert.equal(reportExportSchema.safeParse({
+    source: "database",
+    reportType: "incidents",
+    filename: "incidents.xlsx",
+    sheetName: "Incidents",
+    filters: { gender: "หญิง", month: "13" },
+  }).success, false);
+});
+
+test("statistics URL filters are bounded and preserve month-only filtering", () => {
+  const parsed = parseStatisticReportFilters({
+    month: "2",
+    year: "2569",
+    smiv: "SMI-V",
+    residence: "เร่ร่อน",
+    page: "3",
+  });
+  assert.deepEqual(parsed, {
+    month: "2",
+    year: "2569",
+    smiv: "SMI-V",
+    residence: "เร่ร่อน",
+    page: 3,
+  });
+  assert.deepEqual(reportDateBounds(parsed), {
+    start: "2026-02-01",
+    end: "2026-03-01",
+  });
+  assert.deepEqual(reportDateBounds({ ...parsed, year: "" }), { month: 2 });
+  assert.equal(filtersToSearchParams(parsed).toString(),
+    "month=2&year=2569&smiv=SMI-V&residence=%E0%B9%80%E0%B8%A3%E0%B9%88%E0%B8%A3%E0%B9%88%E0%B8%AD%E0%B8%99&page=3");
+
+  assert.deepEqual(parseStatisticReportFilters({
+    month: "13",
+    year: "not-a-year",
+    smiv: "unknown",
+    residence: "unknown",
+    page: "-1",
+  }), { month: "", year: "", smiv: "", residence: "", page: 1 });
+});
+
+test("server-filtered report migration keeps RLS and typed date filters", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260827000900_server_filtered_reports.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(sql, /create or replace function public\.try_report_date\(value text\)/i);
+  assert.match(sql, /create or replace view public\.admission_statistics_rows[\s\S]+with \(security_invoker = true\)/i);
+  assert.match(sql, /report_year[\s\S]+report_month/i);
+  assert.match(sql, /create or replace view public\.statistics_report_years/i);
+  assert.match(sql, /grant select on public\.statistics_report_years to authenticated/i);
+  assert.match(sql, /assessments_admission_report_filter_idx/i);
+  assert.match(sql, /backup_admission_report_filter_idx/i);
+  assert.doesNotMatch(sql, /security_definer/i);
 });
 
 test("activity logging migration is append-only and removes PHI snapshots", () => {

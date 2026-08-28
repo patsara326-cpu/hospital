@@ -12,6 +12,11 @@
     "e2e:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types tests/e2e/readiness.ts",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
+    "perf:supabase": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types tests/performance/supabase-latency.ts",
+    "perf:reports": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types tests/performance/report-views-postgres.ts",
+    "check:report-schema": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types tests/performance/report-schema-check.ts",
+    "perf:load": "node scripts/performance/load-test.mjs",
+    "perf:lighthouse": "node scripts/performance/lighthouse.mjs",
     "lint": "eslint"
   },
   "dependencies": {
@@ -35,11 +40,14 @@
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "lighthouse": "^13.4.1",
+    "pg": "^8.23.0",
     "supabase": "^2.115.0",
     "tailwindcss": "^4",
     "typescript": "^5"

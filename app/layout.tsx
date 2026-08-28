@@ -24,7 +24,7 @@ const kodchasan = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "ระบบผู้ป่วยจิตเวช",
+  title: "SMIV smart click",
   description: "Hospital psychiatric patient management system",
 };
 

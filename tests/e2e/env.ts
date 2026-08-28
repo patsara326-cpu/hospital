@@ -2,6 +2,10 @@ import { config } from "dotenv";
 import { z } from "zod";
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost"]);
+const configuredValue = (label: string, minimumLength = 8) => z.string()
+  .trim()
+  .min(minimumLength)
+  .refine((value) => !value.startsWith("replace_with_"), `${label} ยังเป็น placeholder`);
 
 export function loadPhase5EnvFile() {
   config({
@@ -13,13 +17,13 @@ export function loadPhase5EnvFile() {
 
 const phase5EnvSchema = z.object({
   E2E_BASE_URL: z.url(),
-  E2E_STAGING_PROJECT_REF: z.string().trim().min(8),
-  E2E_PRODUCTION_PROJECT_REF: z.string().trim().min(8),
+  E2E_STAGING_PROJECT_REF: configuredValue("E2E_STAGING_PROJECT_REF"),
+  E2E_PRODUCTION_PROJECT_REF: configuredValue("E2E_PRODUCTION_PROJECT_REF"),
   E2E_SUPABASE_URL: z.url(),
-  E2E_SUPABASE_ANON_KEY: z.string().trim().min(20),
-  E2E_SUPABASE_SERVICE_ROLE_KEY: z.string().trim().min(20),
+  E2E_SUPABASE_ANON_KEY: configuredValue("E2E_SUPABASE_ANON_KEY", 20),
+  E2E_SUPABASE_SERVICE_ROLE_KEY: configuredValue("E2E_SUPABASE_SERVICE_ROLE_KEY", 20),
   E2E_USERNAME: z.string().trim().min(1),
-  E2E_PASSWORD: z.string().min(8),
+  E2E_PASSWORD: configuredValue("E2E_PASSWORD"),
   E2E_HN_PREFIX: z.string().trim().regex(
     /^(E2E|QA|TEST)-[A-Z0-9-]{1,16}$/,
     "ต้องขึ้นต้นด้วย E2E-, QA- หรือ TEST- และลงท้ายด้วย -",

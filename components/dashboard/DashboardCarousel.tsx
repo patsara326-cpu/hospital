@@ -8,6 +8,7 @@ export type DashboardPatientRow = {
   smi_type: string | null;
   oas_score: number | string | null;
   admitting_doctor: string | null;
+  patient_count: number;
 };
 
 export type DashboardDoctor = {

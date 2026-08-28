@@ -2,7 +2,13 @@ import "server-only";
 
 import * as XLSX from "xlsx";
 
+import {
+  loadAllAdmissionReportRows,
+  loadAllDischargeReportRows,
+} from "@/lib/statistics/report-data";
+import type { StatisticReportFilters } from "@/lib/statistics/report-filters";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { formatDateBE } from "@/lib/utils/date";
 import { reportExportSchema } from "@/lib/validation/report-export";
 import type { Json } from "@/types/database.types";
 
@@ -11,6 +17,34 @@ export const dynamic = "force-dynamic";
 
 const EXPORT_ROLES = new Set(["clinician", "auditor", "admin"]);
 const MAX_EXPORT_REQUEST_BYTES = 8 * 1024 * 1024;
+
+function statisticFilters(filters: {
+  month?: string;
+  year?: string;
+  smi_filter?: StatisticReportFilters["smiv"];
+  residence_filter?: StatisticReportFilters["residence"];
+}): StatisticReportFilters {
+  return {
+    month: filters.month ?? "",
+    year: filters.year ?? "",
+    smiv: filters.smi_filter ?? "",
+    residence: filters.residence_filter ?? "",
+    page: 1,
+  };
+}
+
+function displayName(row: {
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+}) {
+  const splitName = `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim();
+  return splitName || row.full_name || "-";
+}
+
+function displaySubstance(value: string | null) {
+  return value?.trim() || "ไม่ใช้";
+}
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -53,7 +87,61 @@ export async function POST(request: Request) {
   }
 
   const report = parsed.data;
-  const worksheet = XLSX.utils.aoa_to_sheet([report.headers, ...report.rows]);
+  let headers: string[];
+  let rows: Array<Array<string | number | boolean | null>>;
+
+  if (report.source === "database") {
+    const gender = report.filters.gender;
+    if (!gender) {
+      return Response.json({ error: "กรุณาระบุหอผู้ป่วยสำหรับรายงาน" }, { status: 400 });
+    }
+
+    try {
+      const filters = statisticFilters(report.filters);
+      if (report.reportType === "admission") {
+        const data = await loadAllAdmissionReportRows(supabase, gender, filters);
+        headers = [
+          "Admit", "HN", "ชื่อ-นามสกุล", "Dx.แรกรับ", "SMIV",
+          "การใช้สารเสพติด", "แพทย์ที่รับผิดชอบ", "ที่อยู่",
+        ];
+        rows = data.map((row) => [
+          formatDateBE(row.admission_date),
+          row.hn || "-",
+          displayName(row),
+          row.diagnosis || "-",
+          row.smi_v_result || "-",
+          displaySubstance(row.substance_type),
+          row.admitting_doctor || "-",
+          row.residence_details || "-",
+        ]);
+      } else {
+        const data = await loadAllDischargeReportRows(supabase, gender, filters);
+        headers = [
+          "วันที่จำหน่าย", "HN", "ชื่อ-นามสกุล", "Last Dx.", "SMIV",
+          "การใช้สารเสพติด", "แพทย์ที่รับผิดชอบ", "ข้อมูลการเยี่ยม", "ที่อยู่",
+        ];
+        rows = data.map((row) => [
+          formatDateBE(row.discharge_date),
+          row.hn || "-",
+          displayName(row),
+          row.last_diagnosis || "-",
+          row.smi_type || "-",
+          displaySubstance(row.substance_type),
+          row.admitting_doctor || "-",
+          row.discharge_type || "-",
+          row.residence_details || "-",
+        ]);
+      }
+    } catch (error) {
+      console.error("Database report export query failed", error instanceof Error ? error.name : "unknown");
+      return Response.json({ error: "ไม่สามารถดึงข้อมูลรายงานฉบับเต็มได้" }, { status: 500 });
+    }
+  } else {
+    headers = report.headers;
+    rows = report.rows;
+  }
+
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, report.sheetName);
   const output = XLSX.write(workbook, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
@@ -61,7 +149,7 @@ export async function POST(request: Request) {
   const metadata = {
     report_type: report.reportType,
     filename: `${report.reportType}.xlsx`,
-    row_count: report.rows.length,
+    row_count: rows.length,
   } satisfies Record<string, Json | undefined>;
   const { error: logError } = await supabase.rpc("record_app_activity", {
     p_event_type: "report.exported",
