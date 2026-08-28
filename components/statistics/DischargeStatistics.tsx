@@ -72,10 +72,18 @@ export default function DischargeStatistics({
   const [navigationPending, startNavigation] = useTransition();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function navigate(changes: Partial<StatisticReportFilters>) {
+  function destination(changes: Partial<StatisticReportFilters>) {
     const params = filtersToSearchParams(filters, changes);
     const query = params.toString();
-    startNavigation(() => router.replace(query ? `${routePath}?${query}` : routePath, { scroll: false }));
+    return query ? `${routePath}?${query}` : routePath;
+  }
+
+  function prefetch(changes: Partial<StatisticReportFilters>) {
+    router.prefetch(destination(changes));
+  }
+
+  function navigate(changes: Partial<StatisticReportFilters>) {
+    startNavigation(() => router.replace(destination(changes), { scroll: false }));
   }
 
   function changeFilter(
@@ -180,6 +188,8 @@ export default function DischargeStatistics({
               type="button"
               className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={navigationPending || filters.page <= 1}
+              onPointerEnter={() => prefetch({ page: filters.page - 1 })}
+              onFocus={() => prefetch({ page: filters.page - 1 })}
               onClick={() => navigate({ page: filters.page - 1 })}
             >
               ก่อนหน้า
@@ -188,6 +198,8 @@ export default function DischargeStatistics({
               type="button"
               className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={navigationPending || filters.page >= totalPages}
+              onPointerEnter={() => prefetch({ page: filters.page + 1 })}
+              onFocus={() => prefetch({ page: filters.page + 1 })}
               onClick={() => navigate({ page: filters.page + 1 })}
             >
               ถัดไป

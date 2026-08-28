@@ -6,7 +6,8 @@ import DashboardCarousel, {
 import { SmivTrendCharts, type SmivTrendData } from "@/components/dashboard/SmivTrendCharts";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { observeServerOperation, queryMetrics } from "@/lib/observability/server-performance";
-import { isMissingRelationError } from "@/lib/supabase/errors";
+import { isMissingFunctionError, isMissingRelationError } from "@/lib/supabase/errors";
+import { cache, Suspense } from "react";
 
 const NON_SMIV_VALUE = "ไม่เข้าข่าย SMI-V";
 const GENDERS = ["ชาย", "หญิง"] as const;
@@ -33,6 +34,25 @@ type DateRow = {
 type IorTrendRow = {
   record_date: string | null;
   smi_type: string | null;
+};
+
+type DashboardPatientGroupRow = {
+  gender: string | null;
+  smi_type: string | null;
+  oas_score: number | string | null;
+  admitting_doctor: string | null;
+  patient_count: number | null;
+};
+
+type DashboardTrendRow = {
+  series: string | null;
+  month_start: string | null;
+  event_count: number | null;
+};
+
+type DashboardSnapshotPayload = {
+  patient_groups: DashboardPatientGroupRow[];
+  monthly_trends: DashboardTrendRow[];
 };
 
 const DOCTORS: DashboardDoctor[] = [
@@ -166,17 +186,69 @@ function buildAggregateSeries(
   }));
 }
 
-async function loadSmivTrendData(): Promise<SmivTrendData> {
+const loadDashboardSnapshot = cache(async () => {
   const { supabase, user } = await getCurrentUser();
-  if (!supabase || !user) return emptyTrendData();
+  if (!supabase || !user) {
+    return {
+      patientGroups: [] as DashboardPatientGroupRow[],
+      patientGroupsError: null,
+      monthlyTrends: [] as DashboardTrendRow[],
+      monthlyTrendsError: null,
+    };
+  }
 
-  const aggregateResult = await observeServerOperation(
-    "dashboard.monthly_trends",
-    () => supabase
-      .from("dashboard_monthly_trends")
-      .select("series, month_start, event_count"),
-    queryMetrics,
+  const snapshotResult = await observeServerOperation(
+    "dashboard.snapshot",
+    () => supabase.rpc("get_dashboard_snapshot").single(),
+    (value) => queryMetrics({ data: value.data ? [value.data] : [] }),
   );
+
+  if (!snapshotResult.error && snapshotResult.data) {
+    const payload = snapshotResult.data as unknown as DashboardSnapshotPayload;
+    return {
+      patientGroups: Array.isArray(payload.patient_groups) ? payload.patient_groups : [],
+      patientGroupsError: null,
+      monthlyTrends: Array.isArray(payload.monthly_trends) ? payload.monthly_trends : [],
+      monthlyTrendsError: null,
+    };
+  }
+
+  if (snapshotResult.error && !isMissingFunctionError(snapshotResult.error)) {
+    console.error("Dashboard snapshot RPC failed", snapshotResult.error.code);
+  }
+
+  // Compatibility path while the RPC migration is rolling out.
+  const [patientGroupsResult, monthlyTrendsResult] = await Promise.all([
+    observeServerOperation(
+      "dashboard.patient_groups",
+      () => supabase
+        .from("dashboard_patient_groups")
+        .select("gender, smi_type, oas_score, admitting_doctor, patient_count"),
+      queryMetrics,
+    ),
+    observeServerOperation(
+      "dashboard.monthly_trends",
+      () => supabase
+        .from("dashboard_monthly_trends")
+        .select("series, month_start, event_count"),
+      queryMetrics,
+    ),
+  ]);
+
+  return {
+    patientGroups: patientGroupsResult.data ?? [],
+    patientGroupsError: patientGroupsResult.error,
+    monthlyTrends: monthlyTrendsResult.data ?? [],
+    monthlyTrendsError: monthlyTrendsResult.error,
+  };
+});
+
+async function loadSmivTrendData(): Promise<SmivTrendData> {
+  const snapshot = await loadDashboardSnapshot();
+  const aggregateResult = {
+    data: snapshot.monthlyTrends,
+    error: snapshot.monthlyTrendsError,
+  };
 
   if (!aggregateResult.error) {
     const rows = aggregateResult.data ?? [];
@@ -192,6 +264,8 @@ async function loadSmivTrendData(): Promise<SmivTrendData> {
   }
 
   // Compatibility during a staged rollout; removed from the hot path once the view exists.
+  const { supabase, user } = await getCurrentUser();
+  if (!supabase || !user) return emptyTrendData();
   const [{ data: patients, error: patientsError }, { data: backup, error: backupError }, { data: ior, error: iorError }] = await Promise.all([
     supabase.from("patients").select("admit_date, smi_type"),
     supabase.from("backup").select("admit_date, smi_type"),
@@ -217,25 +291,11 @@ async function loadSmivTrendData(): Promise<SmivTrendData> {
 }
 
 async function loadDashboardData(): Promise<DashboardData> {
-  const { supabase, user } = await getCurrentUser();
-  if (!supabase || !user) {
-    return {
-      total: 0,
-      general: 0,
-      smiv: 0,
-      wards: GENDERS.map((gender) => ({ gender, total: 0, general: 0, smiv: 0, smivTypes: [0, 0, 0, 0] })),
-      doctors: DOCTORS.map((doctor) => ({ ...doctor, total: 0, general: 0, smiv: 0 })),
-      updatedAt: new Date().toISOString(),
-    };
-  }
-
-  const groupedResult = await observeServerOperation(
-    "dashboard.patient_groups",
-    () => supabase
-      .from("dashboard_patient_groups")
-      .select("gender, smi_type, oas_score, admitting_doctor, patient_count"),
-    queryMetrics,
-  );
+  const snapshot = await loadDashboardSnapshot();
+  const groupedResult = {
+    data: snapshot.patientGroups,
+    error: snapshot.patientGroupsError,
+  };
 
   let rows: DashboardPatientRow[];
 
@@ -248,6 +308,17 @@ async function loadDashboardData(): Promise<DashboardData> {
       patient_count: Number(row.patient_count ?? 0),
     }));
   } else if (isMissingRelationError(groupedResult.error)) {
+    const { supabase, user } = await getCurrentUser();
+    if (!supabase || !user) {
+      return {
+        total: 0,
+        general: 0,
+        smiv: 0,
+        wards: GENDERS.map((gender) => ({ gender, total: 0, general: 0, smiv: 0, smivTypes: [0, 0, 0, 0] })),
+        doctors: DOCTORS.map((doctor) => ({ ...doctor, total: 0, general: 0, smiv: 0 })),
+        updatedAt: new Date().toISOString(),
+      };
+    }
     const legacyResult = await supabase
       .from("patients")
       .select("gender, smi_type, oas_score, admitting_doctor");
@@ -298,12 +369,52 @@ async function loadDashboardData(): Promise<DashboardData> {
   };
 }
 
-export default async function HomePage() {
-  const [data, trendData] = await Promise.all([loadDashboardData(), loadSmivTrendData()]);
+async function DashboardOverview() {
+  const data = await loadDashboardData();
+  return <DashboardCarousel data={data} />;
+}
+
+async function DashboardTrends() {
+  const trendData = await loadSmivTrendData();
+  return <SmivTrendCharts data={trendData} />;
+}
+
+function DashboardOverviewSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-6xl animate-pulse px-4 py-6 md:px-6" role="status">
+      <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="h-4 w-32 rounded bg-slate-200" />
+        <div className="mt-3 h-8 w-80 max-w-full rounded bg-slate-200" />
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="h-32 rounded-2xl bg-slate-100" />
+          <div className="h-32 rounded-2xl bg-slate-100" />
+          <div className="h-32 rounded-2xl bg-slate-100" />
+        </div>
+      </div>
+      <span className="sr-only">Loading dashboard overview</span>
+    </div>
+  );
+}
+
+function DashboardTrendsSkeleton() {
+  return (
+    <div className="mx-auto grid w-full max-w-6xl animate-pulse gap-4 px-4 pb-6 md:px-6" role="status">
+      <div className="h-80 rounded-[28px] border border-slate-200 bg-slate-100" />
+      <div className="h-80 rounded-[28px] border border-slate-200 bg-slate-100" />
+      <span className="sr-only">Loading dashboard trends</span>
+    </div>
+  );
+}
+
+export default function HomePage() {
   return (
     <>
-      <DashboardCarousel data={data} />
-      <SmivTrendCharts data={trendData} />
+      <Suspense fallback={<DashboardOverviewSkeleton />}>
+        <DashboardOverview />
+      </Suspense>
+      <Suspense fallback={<DashboardTrendsSkeleton />}>
+        <DashboardTrends />
+      </Suspense>
     </>
   );
 }

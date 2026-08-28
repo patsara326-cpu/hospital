@@ -513,6 +513,13 @@ export type Database = {
     }
     Functions: {
       current_app_role: { Args: never; Returns: string }
+      get_dashboard_snapshot: {
+        Args: never
+        Returns: {
+          monthly_trends: Json
+          patient_groups: Json
+        }[]
+      }
       discharge_patient: {
         Args: {
           p_discharge_date: string

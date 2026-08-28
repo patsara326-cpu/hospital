@@ -26,10 +26,16 @@ export default function IncidentStatistics({ initialRows, total, years, filters,
   const [navigationPending, startNavigation] = useTransition();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function navigate(changes: Partial<IncidentReportFilters>) {
+  function destination(changes: Partial<IncidentReportFilters>) {
     const params = incidentFiltersToSearchParams(filters, changes);
     const query = params.toString();
-    startNavigation(() => router.replace(query ? `${routePath}?${query}` : routePath, { scroll: false }));
+    return query ? `${routePath}?${query}` : routePath;
+  }
+  function prefetch(changes: Partial<IncidentReportFilters>) {
+    router.prefetch(destination(changes));
+  }
+  function navigate(changes: Partial<IncidentReportFilters>) {
+    startNavigation(() => router.replace(destination(changes), { scroll: false }));
   }
   function changeFilter(key: "month" | "year" | "gender" | "smiv", value: string) {
     navigate({ [key]: value, page: 1 });
@@ -54,6 +60,6 @@ export default function IncidentStatistics({ initialRows, total, years, filters,
         <tbody className="divide-y divide-slate-200 bg-white">{initialRows.length === 0 ? <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">ยังไม่มีข้อมูล IOR</td></tr> : initialRows.map((row) => <tr key={row.id} className="hover:bg-slate-50"><td className="px-3 py-2 font-medium text-slate-800">{row.hn || "-"}</td><td className="px-3 py-2 text-slate-700">{row.full_name || "-"}</td><td className="px-3 py-2 text-slate-700">{row.smi_type || "-"}</td><td className="px-3 py-2 text-slate-700">{row.level || "-"}</td></tr>)}</tbody>
       </table>
     </div>
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600"><span>{navigationPending ? "กำลังโหลดข้อมูล..." : `หน้า ${filters.page} จาก ${totalPages}`}</span><div className="flex gap-2"><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || filters.page <= 1} onClick={() => navigate({ page: filters.page - 1 })}>ก่อนหน้า</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || filters.page >= totalPages} onClick={() => navigate({ page: filters.page + 1 })}>ถัดไป</button></div></div>
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600"><span>{navigationPending ? "กำลังโหลดข้อมูล..." : `หน้า ${filters.page} จาก ${totalPages}`}</span><div className="flex gap-2"><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || filters.page <= 1} onPointerEnter={() => prefetch({ page: filters.page - 1 })} onFocus={() => prefetch({ page: filters.page - 1 })} onClick={() => navigate({ page: filters.page - 1 })}>ก่อนหน้า</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || filters.page >= totalPages} onPointerEnter={() => prefetch({ page: filters.page + 1 })} onFocus={() => prefetch({ page: filters.page + 1 })} onClick={() => navigate({ page: filters.page + 1 })}>ถัดไป</button></div></div>
   </StatisticsPage>;
 }

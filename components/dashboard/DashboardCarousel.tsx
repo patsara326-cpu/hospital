@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
+import DashboardPager from "@/components/dashboard/DashboardPager";
 import { formatDateLongBE } from "@/lib/utils/date";
 
 export type DashboardPatientRow = {
@@ -11,11 +9,7 @@ export type DashboardPatientRow = {
   patient_count: number;
 };
 
-export type DashboardDoctor = {
-  id: string;
-  name: string;
-  match?: string;
-};
+export type DashboardDoctor = { id: string; name: string; match?: string };
 
 type WardSummary = {
   gender: "ชาย" | "หญิง";
@@ -41,19 +35,11 @@ const smivColors = [
   "bg-red-600 text-white",
 ];
 
-function DoctorCard({
-  doctor,
-}: {
-  doctor: DashboardData["doctors"][number];
-}) {
+function DoctorCard({ doctor }: { doctor: DashboardData["doctors"][number] }) {
   return (
     <article className="flex min-h-44 flex-col rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-pink-50 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <h3 className="min-h-12 text-sm font-semibold leading-6 text-violet-950">
-        {doctor.name}
-      </h3>
-      <div className="mt-2 text-center text-4xl font-bold tracking-tight text-violet-700">
-        {doctor.total}
-      </div>
+      <h3 className="min-h-12 text-sm font-semibold leading-6 text-violet-950">{doctor.name}</h3>
+      <div className="mt-2 text-center text-4xl font-bold tracking-tight text-violet-700">{doctor.total}</div>
       <div className="mt-auto grid grid-cols-2 gap-2 pt-3 text-center text-xs">
         <div className="rounded-xl border border-slate-100 bg-white/80 p-2">
           <div className="text-slate-500">ทั่วไป</div>
@@ -102,136 +88,66 @@ function WardCard({ ward }: { ward: WardSummary }) {
   );
 }
 
-export default function DashboardCarousel({ data }: { data: DashboardData }) {
-  const [page, setPage] = useState<0 | 1 | 2>(0);
-  const pointerStart = useRef<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    if (page !== 0) return;
-    const timer = window.setTimeout(() => setPage(1), 15_000);
-    return () => window.clearTimeout(timer);
-  }, [page]);
-
-  const updatedDate = formatDateLongBE(data.updatedAt);
-  const pageDoctors = page === 1 ? data.doctors.slice(0, 6) : data.doctors.slice(6);
-
-  function movePage(direction: "next" | "prev") {
-    setPage((current) => {
-      if (direction === "next") return current === 2 ? 0 : ((current + 1) as 0 | 1 | 2);
-      return current === 0 ? 2 : ((current - 1) as 0 | 1 | 2);
-    });
-  }
-
-  function handlePointerDown(event: React.PointerEvent<HTMLElement>) {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    pointerStart.current = { x: event.clientX, y: event.clientY };
-  }
-
-  function handlePointerUp(event: React.PointerEvent<HTMLElement>) {
-    const start = pointerStart.current;
-    pointerStart.current = null;
-    if (!start) return;
-    const deltaX = event.clientX - start.x;
-    const deltaY = event.clientY - start.y;
-    if (Math.abs(deltaX) < 48 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
-    movePage(deltaX < 0 ? "next" : "prev");
-  }
-
+function WardOverview({ data, updatedDate }: { data: DashboardData; updatedDate: string }) {
   return (
-    <div
-      className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6"
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={() => { pointerStart.current = null; }}
-    >
-      {page === 0 ? (
-        <section className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:p-7" aria-labelledby="dashboard-title">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-pink-400" />
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-indigo-600">Ward overview</p>
-              <h1 id="dashboard-title" className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-              ยอดผู้ป่วยที่รับการรักษาในหอผู้ป่วยจิตเวช
-              </h1>
-            </div>
-            <p className="text-sm text-slate-500">อัปเดต {updatedDate}</p>
-          </div>
+    <section className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:p-7" aria-labelledby="dashboard-title">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-pink-400" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-indigo-600">Ward overview</p>
+          <h1 id="dashboard-title" className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">ยอดผู้ป่วยที่รับการรักษาในหอผู้ป่วยจิตเวช</h1>
+        </div>
+        <p className="text-sm text-slate-500">อัปเดต {updatedDate}</p>
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <SummaryCard label="ยอดรวม" value={data.total} className="bg-gradient-to-br from-orange-100 to-amber-50 text-orange-950 ring-1 ring-orange-200/70" />
+        <SummaryCard label="จิตเวชทั่วไป" value={data.general} className="border border-slate-200 bg-slate-50 text-slate-900" />
+        <SummaryCard label="SMI-V" value={data.smiv} className="border border-indigo-100 bg-indigo-50 text-indigo-950" />
+      </div>
+      <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <span className="h-px flex-1 bg-slate-200" /><span>Ward breakdown</span><span className="h-px flex-1 bg-slate-200" />
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">{data.wards.map((ward) => <WardCard key={ward.gender} ward={ward} />)}</div>
+    </section>
+  );
+}
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-gradient-to-br from-orange-100 to-amber-50 p-5 text-center ring-1 ring-orange-200/70">
-              <div className="text-sm font-medium text-orange-900/70">ยอดรวม</div>
-              <div className="mt-2 text-5xl font-bold tracking-tight text-orange-950">{data.total}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center">
-              <div className="text-sm font-medium text-slate-500">จิตเวชทั่วไป</div>
-              <div className="mt-2 text-4xl font-bold tracking-tight text-slate-900">{data.general}</div>
-            </div>
-            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 text-center">
-              <div className="text-sm font-medium text-indigo-600">SMI-V</div>
-              <div className="mt-2 text-4xl font-bold tracking-tight text-indigo-950">{data.smiv}</div>
-            </div>
-          </div>
-
-          <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-            <span className="h-px flex-1 bg-slate-200" />
-            <span>Ward breakdown</span>
-            <span className="h-px flex-1 bg-slate-200" />
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {data.wards.map((ward) => (
-              <WardCard key={ward.gender} ward={ward} />
-            ))}
-          </div>
-          <DashboardArrow direction="next" onClick={() => movePage("next")} label="ไปหน้าถัดไป" />
-          <SwipeHint />
-        </section>
-      ) : (
-        <section className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:p-7" aria-labelledby="doctor-summary-title">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-400 to-sky-400" />
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-600">Doctor overview</p>
-              <h2 id="doctor-summary-title" className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-              ยอดผู้ป่วยแยกตามแพทย์ผู้รับ
-              </h2>
-            </div>
-            <p className="text-sm text-slate-500">อัปเดต {updatedDate}</p>
-          </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {pageDoctors.map((doctor) => (
-              <DoctorCard key={doctor.id} doctor={doctor} />
-            ))}
-          </div>
-          <DashboardArrow direction="prev" onClick={() => movePage("prev")} label="ย้อนกลับ" />
-          <DashboardArrow direction="next" onClick={() => movePage("next")} label={page === 1 ? "ไปหน้าถัดไป" : "กลับหน้าหลัก"} />
-          <SwipeHint />
-        </section>
-      )}
+function SummaryCard({ label, value, className }: { label: string; value: number; className: string }) {
+  return (
+    <div className={`rounded-2xl p-5 text-center ${className}`}>
+      <div className="text-sm font-medium opacity-70">{label}</div>
+      <div className="mt-2 text-4xl font-bold tracking-tight">{value}</div>
     </div>
   );
 }
 
-function DashboardArrow({
-  direction,
-  onClick,
-  label,
-}: {
-  direction: "prev" | "next";
-  onClick: () => void;
-  label: string;
+function DoctorOverview({ doctors, updatedDate, page }: {
+  doctors: DashboardData["doctors"];
+  updatedDate: string;
+  page: number;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className={`absolute top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300/70 bg-white/50 text-sm text-slate-500/50 opacity-25 backdrop-blur transition hover:bg-white/90 hover:text-indigo-600 hover:opacity-90 focus-visible:opacity-100 ${direction === "prev" ? "left-1" : "right-1"}`}
-    >
-      {direction === "prev" ? "◀" : "▶"}
-    </button>
+    <section className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:p-7" aria-labelledby={`doctor-summary-title-${page}`}>
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-400 to-sky-400" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-600">Doctor overview</p>
+          <h2 id={`doctor-summary-title-${page}`} className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">ยอดผู้ป่วยแยกตามแพทย์ผู้รับ</h2>
+        </div>
+        <p className="text-sm text-slate-500">อัปเดต {updatedDate}</p>
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{doctors.map((doctor) => <DoctorCard key={doctor.id} doctor={doctor} />)}</div>
+    </section>
   );
 }
 
-function SwipeHint() {
-  return <p className="mt-5 text-center text-xs text-slate-400">ปัดซ้าย/ขวาเพื่อดูหน้าถัดไป</p>;
+export default function DashboardCarousel({ data }: { data: DashboardData }) {
+  const updatedDate = formatDateLongBE(data.updatedAt);
+  return (
+    <DashboardPager pages={[
+      <WardOverview key="ward" data={data} updatedDate={updatedDate} />,
+      <DoctorOverview key="doctors-1" doctors={data.doctors.slice(0, 6)} updatedDate={updatedDate} page={1} />,
+      <DoctorOverview key="doctors-2" doctors={data.doctors.slice(6)} updatedDate={updatedDate} page={2} />,
+    ]} />
+  );
 }

@@ -52,12 +52,20 @@ export default function IpdList({ gender, records, total, page, pageSize, active
   const [detailError, setDetailError] = useState("");
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function navigate(tab: IpdTab | null, nextPage = 1) {
+  function destination(tab: IpdTab | null, nextPage = 1) {
     const params = new URLSearchParams();
     if (tab) params.set("type", tab);
     if (nextPage > 1) params.set("page", String(nextPage));
+    return params.size ? `${routePath}?${params}` : routePath;
+  }
+
+  function prefetch(tab: IpdTab | null, nextPage = 1) {
+    router.prefetch(destination(tab, nextPage));
+  }
+
+  function navigate(tab: IpdTab | null, nextPage = 1) {
     setOpenId(null);
-    startNavigation(() => router.replace(params.size ? `${routePath}?${params}` : routePath, { scroll: false }));
+    startNavigation(() => router.replace(destination(tab, nextPage), { scroll: false }));
   }
 
   async function toggleRecord(id: string) {
@@ -82,7 +90,10 @@ export default function IpdList({ gender, records, total, page, pageSize, active
     <section className="legacy-card p-5 md:p-6" aria-labelledby="ipd-title">
       <h1 id="ipd-title" className="legacy-card-title">IPD {gender}</h1>
       <div className="mt-5 flex gap-3">
-        {(["nonsmiv", "smiv"] as const).map((tab) => <button key={tab} type="button" className={`flex-1 rounded-xl px-4 py-3 font-semibold transition ${activeTab === tab ? "bg-indigo-600 text-white" : "bg-slate-400 text-white hover:bg-indigo-500"}`} aria-pressed={activeTab === tab} disabled={navigationPending} onClick={() => navigate(activeTab === tab ? null : tab)}>{tab === "nonsmiv" ? "Non SMIV" : "SMIV"}</button>)}
+        {(["nonsmiv", "smiv"] as const).map((tab) => {
+          const targetTab = activeTab === tab ? null : tab;
+          return <button key={tab} type="button" className={`flex-1 rounded-xl px-4 py-3 font-semibold transition ${activeTab === tab ? "bg-indigo-600 text-white" : "bg-slate-400 text-white hover:bg-indigo-500"}`} aria-pressed={activeTab === tab} disabled={navigationPending} onPointerEnter={() => prefetch(targetTab)} onFocus={() => prefetch(targetTab)} onClick={() => navigate(targetTab)}>{tab === "nonsmiv" ? "Non SMIV" : "SMIV"}</button>;
+        })}
       </div>
       {error ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">เกิดข้อผิดพลาด: {error}</div> : null}
       {detailError ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{detailError}</div> : null}
@@ -99,7 +110,7 @@ export default function IpdList({ gender, records, total, page, pageSize, active
             </div> : null}
           </article>;
         })}
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-600"><span>{navigationPending ? "กำลังโหลดข้อมูล..." : `หน้า ${page} จาก ${totalPages} · ${total} ราย`}</span><div className="flex gap-2"><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || page <= 1} onClick={() => navigate(activeTab, page - 1)}>ก่อนหน้า</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || page >= totalPages} onClick={() => navigate(activeTab, page + 1)}>ถัดไป</button></div></div>
+        <div className="mt-4 flex items-center justify-between text-sm text-slate-600"><span>{navigationPending ? "กำลังโหลดข้อมูล..." : `หน้า ${page} จาก ${totalPages} · ${total} ราย`}</span><div className="flex gap-2"><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || page <= 1} onPointerEnter={() => prefetch(activeTab, page - 1)} onFocus={() => prefetch(activeTab, page - 1)} onClick={() => navigate(activeTab, page - 1)}>ก่อนหน้า</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || page >= totalPages} onPointerEnter={() => prefetch(activeTab, page + 1)} onFocus={() => prefetch(activeTab, page + 1)} onClick={() => navigate(activeTab, page + 1)}>ถัดไป</button></div></div>
       </div> : null}
     </section>
   </div>;

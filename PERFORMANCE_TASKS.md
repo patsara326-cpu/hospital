@@ -2,7 +2,7 @@
 
 เอกสารนี้สรุปงานปรับความเร็วของ Next.js และ Supabase โดยมีเงื่อนไขหลักว่า ผลลัพธ์ทางคลินิก สิทธิ์การเข้าถึง และรูปแบบรายงานต้องเหมือน logic เดิม
 
-> สถานะ rollout ณ 28 สิงหาคม 2026: migrations `20260823000700`–`20260827000900` apply ไปทั้ง **staging และ production แล้ว**; staging ผ่าน field parity, synthetic volume/EXPLAIN, role matrix และ browser lifecycle/export test ส่วน production ตรวจ migration history `001`–`009`, post-push dry-run และ read-only schema check ผ่านทั้งหมด
+> สถานะ rollout ณ 28 สิงหาคม 2026: migrations `20260823000700`–`20260828001200` apply ไปทั้ง **staging และ production แล้ว**; staging ผ่าน field parity, synthetic volume/EXPLAIN, role matrix และ browser lifecycle/export test ส่วน production ตรวจ migration history `001`–`012`, post-push dry-run และ read-only schema check ผ่านทั้งหมด
 
 ## P0 — read-optimized PostgreSQL views
 
@@ -18,6 +18,7 @@
 - [ ] Rotate staging/production credential ที่เคยอยู่ใน tracked files แล้วอัปเดต secret store ของ deployment ที่ใช้งาน — **เว้นไว้ตามคำสั่งผู้ใช้**
 - [ ] ย้าย hardcoded legacy anon key ใน `ref/script.js` ออก — **เว้นไว้ตามคำสั่งผู้ใช้**
 - [x] Apply migrations `007`–`009` ไป staging และ production ตามลำดับ และยืนยัน migration history `001–009`
+- [x] Apply migration `012` สำหรับ dashboard snapshot RPC ไป staging และ production และยืนยัน post-push dry-run เป็น `upToDate: true`
 - [x] รัน staging security role matrix ครบ 4 roles และ browser lifecycle/export test ของ read views
 - [x] ทำ field-by-field comparison กับ legacy projection บนชุดข้อมูล edge cases: assessment ซ้ำ, วันที่ผิดรูปแบบ, structured fallback, null date และ พ.ศ./ค.ศ.
 - [x] เก็บ baseline ด้วย synthetic dataset 7,500 แถวใน transaction และตรวจ `EXPLAIN (ANALYZE, BUFFERS)`; transaction ถูก rollback หลังทดสอบ
@@ -31,7 +32,7 @@
 - Supabase staging network check หลัง migration 009 (ข้อมูล 0 แถว): auth sign-in 162.9 ms, profile 85.4 ms และ optimized views 50.6–67.2 ms
 - Synthetic report parity 7,500 แถว: pagination 100 แถวไม่ซ้ำ, full filtered export 7,501 แถว และ admission view หน้าแรก 50 แถวใช้ 63.88 ms ใน transaction
 - Authenticated browser lifecycle บน local app ที่ชี้ staging: filter ด้วย URL/server query, admission/discharge export, discharge workflow และ history ผ่านครบ 1/1; synthetic HN ถูก cleanup แล้ว
-- Supabase production: migrations `001`–`009` ตรงกัน, dry-run หลัง rollout เป็น `upToDate: true`, read-only report schema check ผ่าน
+- Supabase production: migrations `001`–`012` ตรงกัน, dry-run หลัง rollout เป็น `upToDate: true`, read-only report schema check ผ่าน
 - Lighthouse `/login`: Performance 87, Accessibility 100, Best Practices 100, SEO 91, FCP 0.8 s, LCP 3.27 s, TBT 263 ms, CLS 0
 - Local production load baseline: concurrency 10, 336.9 requests/s, p95 49.0 ms, error 0
 - ยังไม่มี Chrome DevTools MCP ใน session จึงยังไม่มี Core Web Vitals และ network trace ของเส้นทาง authenticated
@@ -56,8 +57,8 @@ npm.cmd run perf:load
 
 ## P0 — ติดตั้งการวัดก่อนแก้ query
 
-- [ ] เพิ่ม OpenTelemetry spans รอบ auth, profile lookup และ Supabase queries ที่สำคัญ
-- [ ] เก็บเวลาแยกเป็น Next.js render, Supabase request, row count และ response size โดยห้าม log PHI
+- [x] เพิ่ม OpenTelemetry spans รอบ auth, profile lookup และ Supabase queries ที่สำคัญ
+- [x] เก็บเวลาแยกเป็น Next.js render, Supabase request, row count และ response size โดยห้าม log PHI
 - [ ] ใช้ Supabase Query Performance/`pg_stat_statements` หา query ที่มี `mean_exec_time`, `max_exec_time` หรือ `total_exec_time` สูง
 - [x] เก็บ `EXPLAIN (ANALYZE, BUFFERS)` ของ legacy admission query และ server-filtered admission view บน staging ด้วยข้อมูลสังเคราะห์
 - [ ] เก็บ Lighthouse report ของ `/login` และเส้นทางหลักที่ login แล้ว
@@ -93,13 +94,14 @@ npm.cmd run perf:load
 ### Dashboard
 
 - [x] สร้างและใช้งาน view ที่คืน `COUNT`/`GROUP BY` แทนการดึงผู้ป่วยทุกแถวมาคำนวณใน Next.js
+- [x] รวม patient groups และ monthly trends เป็น `get_dashboard_snapshot()` RPC หนึ่งรอบ พร้อม fallback ระหว่าง rollout
 - [ ] เปรียบเทียบยอดแยกเพศ, SMI type, OAS score และแพทย์ผู้รับผิดชอบกับ logic เดิม
 
 ความเสี่ยงต่อ logic: ปานกลาง
 
 ## P1 — Pagination และ export
 
-- [ ] ทำ server-side pagination สำหรับ IPD และ incidents (admission/discharge statistics เสร็จแล้ว)
+- [x] ทำ server-side pagination สำหรับ IPD และ incidents (admission/discharge statistics เสร็จแล้ว)
 - [x] ให้ admission/discharge filter ทำงานกับข้อมูลทั้งหมด ไม่ใช่เฉพาะหน้าปัจจุบัน
 - [x] ให้ยอด admission/discharge คำนวณจากข้อมูลทั้งหมดตาม filter ด้วย exact count
 - [x] ให้ admission/discharge export query ข้อมูลทั้งหมดตาม filter จาก server ไม่ใช่ export เฉพาะหน้าที่เปิดอยู่
@@ -109,7 +111,7 @@ npm.cmd run perf:load
 ## P1 — ลด Auth round trips
 
 - [x] ใช้ `getClaims()` ใน proxy สำหรับ optimistic identity check และคง `getUser()` ใน main layout เพื่อรับสถานะบัญชีล่าสุด
-- [ ] รวม auth/profile lookup ใน server-only DAL และ deduplicate ภายใน request
+- [x] รวม auth/profile lookup ใน server-only DAL และ deduplicate ภายใน request
 - [x] ให้ RLS/RPC เป็นตัวบังคับ authorization ขั้นสุดท้ายเหมือนเดิม
 - [ ] ทดสอบ session หมดอายุ, logout, user ถูกปิดใช้งาน และทุก application role
 
@@ -139,7 +141,9 @@ npm.cmd run perf:load
 
 ## P2 — Frontend และ perceived performance
 
-- [ ] เพิ่ม route `loading.tsx`/Suspense สำหรับหน้าที่รอข้อมูลหลายชุด
+- [x] เพิ่ม route `loading.tsx`/Suspense สำหรับหน้าที่รอข้อมูลหลายชุด
+- [x] แยก dashboard cards/กราฟเป็น Server Components และ hydrate เฉพาะ pager/export controls
+- [x] prefetch หน้ารายงาน/IPD เมื่อ hover หรือ focus เพื่อใช้ browser Router Cache โดยไม่ใช้ shared cache
 - [x] ทดลอง lazy-load `RegisterModal` และย้อนการเปลี่ยนแปลง เพราะ unused JS ไม่ลดและ Lighthouse ไม่ดีขึ้น
 - [x] วัด Lighthouse ก่อนและหลังการทดลอง
 
@@ -155,7 +159,7 @@ npm.cmd run perf:load
 
 ## Regression checklist
 
-- [x] Existing domain tests ผ่าน (25 tests, local, 28 สิงหาคม 2026)
+- [x] Existing domain tests ผ่าน (28 tests, local, 28 สิงหาคม 2026)
 - [x] Security role matrix ผ่านครบ 4 roles บน staging หลัง migration
 - [x] Browser smoke test ยืนยัน HN สังเคราะห์จาก views ใน IPD, Assessment, Admission และ Discharge โดยไม่พบ console/page/request error
 - [x] ผล legacy projection และ view ใหม่เท่ากันแบบ field-by-field โดยไม่บันทึก PHI ลง log
