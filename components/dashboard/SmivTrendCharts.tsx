@@ -81,14 +81,24 @@ function TrendChart({ data, title, description, ariaLabel }: {
         </svg>
       </div>
 
-      <details className="mt-5 max-w-full overflow-hidden rounded-2xl border border-slate-100">
-        <summary className="cursor-pointer bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">แสดงตารางข้อมูล</summary>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] border-collapse text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="border-b border-slate-100 px-4 py-3 font-semibold">เดือน</th><th className="border-b border-slate-100 px-4 py-3 text-right font-semibold">จำนวน</th></tr></thead>
-            <tbody>{data.map((item) => <tr key={item.key} className="border-b border-slate-50 last:border-b-0"><td className="px-4 py-3 text-slate-700">{item.label}</td><td className="px-4 py-3 text-right font-semibold text-slate-900">{item.value}</td></tr>)}</tbody>
-          </table>
-        </div>
+      <details className="mt-5 w-full max-w-full overflow-hidden rounded-2xl border border-slate-100">
+        <summary className="cursor-pointer bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-600 sm:px-4 sm:py-3 sm:text-sm">แสดงตารางข้อมูล</summary>
+        <table className="w-full table-fixed border-collapse text-xs sm:text-sm">
+          <thead className="bg-slate-50 text-left text-slate-600">
+            <tr>
+              <th className="w-2/3 border-b border-slate-100 px-3 py-2.5 font-semibold sm:px-4 sm:py-3">เดือน</th>
+              <th className="w-1/3 border-b border-slate-100 px-3 py-2.5 text-right font-semibold sm:px-4 sm:py-3">จำนวน</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((item) => (
+              <tr key={item.key} className="border-b border-slate-50 last:border-b-0">
+                <td className="break-words px-3 py-2.5 text-slate-700 sm:px-4 sm:py-3">{item.label}</td>
+                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-slate-900 sm:px-4 sm:py-3">{item.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </details>
 
     </section>

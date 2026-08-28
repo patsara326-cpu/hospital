@@ -11,6 +11,7 @@ import {
   getActorLabel,
   getChangedFieldDetails,
   getEventLabel,
+  LOG_EVENT_OPTIONS,
 } from "../lib/logs/event-labels.ts";
 import {
   filtersToSearchParams,
@@ -478,6 +479,32 @@ test("admin log labels translate audit codes and staff identity for general user
     getChangedFieldDetails(["discharge_date", "last_diagnosis"]),
     ["ข้อมูลที่เปลี่ยน: วันที่จำหน่าย, การวินิจฉัยครั้งสุดท้าย"],
   );
+});
+
+test("admin log omits unsupported data mutations from filters and future capture", () => {
+  const excludedEvents = [
+    "users.update",
+    "users.delete",
+    "patients.delete",
+    "ior_records.update",
+    "ior_records.delete",
+    "backup.update",
+    "backup.delete",
+  ];
+  const filterOptions = new Set(LOG_EVENT_OPTIONS.map((option) => option.value));
+
+  for (const eventCode of excludedEvents) {
+    assert.equal(filterOptions.has(eventCode), false, `${eventCode} must not be filterable`);
+  }
+
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260828001300_limit_admin_audit_events.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /tg_table_name = 'users' and tg_op in \('UPDATE', 'DELETE'\)/i);
+  assert.match(sql, /tg_table_name = 'patients' and tg_op = 'DELETE'/i);
+  assert.match(sql, /tg_table_name = 'ior_records' and tg_op in \('UPDATE', 'DELETE'\)/i);
+  assert.match(sql, /tg_table_name = 'backup' and tg_op in \('UPDATE', 'DELETE'\)/i);
 });
 
 test("admin log time filters validate Bangkok custom ranges and rolling presets", () => {

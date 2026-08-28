@@ -15,20 +15,13 @@ const ACTIVITY_EVENT_LABELS: Record<string, string> = {
 
 const AUDIT_EVENT_LABELS: Record<string, string> = {
   "users.insert": "เพิ่มบัญชีผู้ใช้งาน",
-  "users.update": "แก้ไขข้อมูลหรือสิทธิ์ผู้ใช้งาน",
-  "users.delete": "ลบบัญชีผู้ใช้งาน",
   "patients.insert": "ลงทะเบียนผู้ป่วย",
   "patients.update": "แก้ไขข้อมูลผู้ป่วย",
-  "patients.delete": "นำผู้ป่วยออกจากทะเบียนผู้ป่วยใน",
   "assessments.insert": "บันทึกผลการประเมิน",
   "assessments.update": "แก้ไขผลการประเมิน",
   "assessments.delete": "ลบผลการประเมิน",
   "backup.insert": "จำหน่ายผู้ป่วย",
-  "backup.update": "แก้ไขประวัติจำหน่ายผู้ป่วย",
-  "backup.delete": "ลบประวัติจำหน่ายผู้ป่วย",
   "ior_records.insert": "บันทึก IOR",
-  "ior_records.update": "แก้ไขบันทึก IOR",
-  "ior_records.delete": "ลบบันทึก IOR",
 };
 
 const TABLE_LABELS: Record<string, string> = {
