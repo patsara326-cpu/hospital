@@ -67,7 +67,7 @@ const clientReportExportSchema = reportMetadataSchema.extend({
 
 const databaseReportExportSchema = reportMetadataSchema.extend({
   source: z.literal("database"),
-  reportType: z.enum(["admission", "discharge"]),
+  reportType: z.enum(["admission", "discharge", "incidents"]),
   filters: reportFiltersSchema,
 }).strict();
 

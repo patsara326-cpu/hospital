@@ -415,6 +415,23 @@ export type Database = {
         }
         Relationships: []
       }
+      current_ipd_list_rows: {
+        Row: {
+          admission_date: string | null
+          admitting_doctor: string | null
+          created_at: string | null
+          first_name: string | null
+          full_name: string | null
+          gender: string | null
+          hn: string | null
+          id: string | null
+          last_name: string | null
+          patient_group: string | null
+          prefix: string | null
+          smi_v_result: string | null
+        }
+        Relationships: []
+      }
       dashboard_patient_groups: {
         Row: {
           admitting_doctor: string | null
@@ -422,6 +439,14 @@ export type Database = {
           oas_score: number | null
           patient_count: number | null
           smi_type: string | null
+        }
+        Relationships: []
+      }
+      dashboard_monthly_trends: {
+        Row: {
+          event_count: number | null
+          month_start: string | null
+          series: string | null
         }
         Relationships: []
       }
@@ -458,6 +483,21 @@ export type Database = {
           id: string | null
           level: string | null
           record_date: string | null
+          smi_type: string | null
+        }
+        Relationships: []
+      }
+      incident_statistics_rows: {
+        Row: {
+          full_name: string | null
+          gender: string | null
+          hn: string | null
+          id: string | null
+          level: string | null
+          record_date: string | null
+          report_date: string | null
+          report_month: number | null
+          report_year: number | null
           smi_type: string | null
         }
         Relationships: []

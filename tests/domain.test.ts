@@ -14,6 +14,8 @@ import {
 } from "../lib/logs/event-labels.ts";
 import {
   filtersToSearchParams,
+  incidentFiltersToSearchParams,
+  parseIncidentReportFilters,
   parseStatisticReportFilters,
   reportDateBounds,
 } from "../lib/statistics/report-filters.ts";
@@ -416,6 +418,32 @@ test("server-filtered report migration keeps RLS and typed date filters", () => 
   assert.match(sql, /assessments_admission_report_filter_idx/i);
   assert.match(sql, /backup_admission_report_filter_idx/i);
   assert.doesNotMatch(sql, /security_definer/i);
+});
+
+test("page-loading performance views are bounded, filterable, and RLS preserving", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260828001100_page_loading_performance.sql", import.meta.url),
+    "utf8",
+  );
+  for (const view of ["dashboard_monthly_trends", "current_ipd_list_rows", "incident_statistics_rows"]) {
+    assert.match(sql, new RegExp(`create or replace view public\\.${view}[\\s\\S]+with \\(security_invoker = true\\)`, "i"));
+    assert.match(sql, new RegExp(`revoke all on public\\.${view} from public, anon`, "i"));
+    assert.match(sql, new RegExp(`grant select on public\\.${view} to authenticated`, "i"));
+  }
+  assert.match(sql, /interval '7 months'/i);
+  assert.match(sql, /when inpatient\.smi_v_result = 'ไม่เข้าข่าย SMI-V' then 'nonsmiv'[\s\S]+else 'smiv'/i);
+  assert.match(sql, /'incidents'::text[\s\S]+incident_statistics_rows/i);
+  assert.match(sql, /ior_records_record_date_id_idx/i);
+  assert.doesNotMatch(sql, /grant select[\s\S]+to anon/i);
+});
+
+test("incident URL filters preserve the old SMI-V semantics and pagination", () => {
+  const parsed = parseIncidentReportFilters({ month: "8", year: "2569", gender: "หญิง", smiv: "SMI-V", page: "2" });
+  assert.deepEqual(parsed, { month: "8", year: "2569", gender: "หญิง", smiv: "SMI-V", page: 2 });
+  assert.equal(incidentFiltersToSearchParams(parsed).toString(),
+    "month=8&year=2569&gender=%E0%B8%AB%E0%B8%8D%E0%B8%B4%E0%B8%87&smiv=SMI-V&page=2");
+  assert.deepEqual(parseIncidentReportFilters({ month: "99", gender: "unknown", page: "0" }),
+    { month: "", year: "", gender: "", smiv: "", page: 1 });
 });
 
 test("activity logging migration is append-only and removes PHI snapshots", () => {

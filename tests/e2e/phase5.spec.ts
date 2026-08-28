@@ -125,6 +125,16 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       await expect(page.locator('[name="behaviors"]')).toHaveCount(0);
     });
 
+    await test.step("load the paginated IPD list and fetch one detail on demand", async () => {
+      await page.goto("/ipd/male?type=smiv");
+      const patientButton = page.getByRole("button").filter({ hasText: hn });
+      await expect(patientButton).toBeVisible();
+      await patientButton.click();
+      await expect(page.getByText("การวินิจฉัย", { exact: true })).toBeVisible();
+      await expect(page.getByText("Schizophrenia", { exact: true })).toBeVisible();
+      await expect(page.getByText(/หน้า 1 จาก \d+ · \d+ ราย/)).toBeVisible();
+    });
+
     await test.step("download all statistics workbooks", async () => {
       for (const route of [
         "/statistics/admission/male",

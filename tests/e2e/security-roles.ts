@@ -178,8 +178,10 @@ async function assertReadMatrix(sessions: RoleSession[], sentinelHn: string) {
 
     const optimizedViews = [
       ["current_ipd_rows", 1],
+      ["current_ipd_list_rows", 1],
       ["admission_statistics_rows", 2],
       ["discharge_statistics_rows", 1],
+      ["incident_statistics_rows", 1],
     ] as const;
     for (const [view, allowedCount] of optimizedViews) {
       const result = await session.client.from(view).select("id").eq("hn", sentinelHn);
@@ -189,6 +191,13 @@ async function assertReadMatrix(sessions: RoleSession[], sentinelHn: string) {
         `${session.role}: read ${view}`,
       );
     }
+
+    const trendResult = await session.client
+      .from("dashboard_monthly_trends")
+      .select("series,event_count");
+    assert.equal(trendResult.error, null, `${session.role}: dashboard trend view read error`);
+    if (session.role === "pending") assert.equal(trendResult.data?.length ?? 0, 0, "pending: dashboard trends exposed rows");
+    else assert.ok((trendResult.data ?? []).some((row) => Number(row.event_count) >= 1), `${session.role}: dashboard trends omitted the synthetic patient`);
 
     const dashboardResult = await session.client
       .from("dashboard_patient_groups")

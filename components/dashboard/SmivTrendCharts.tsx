@@ -28,7 +28,7 @@ const PADDING = { top: 52, right: 28, bottom: 56, left: 48 };
 type MenuAction = {
   label: string;
   icon: typeof Maximize2;
-  onClick: () => void;
+  action: "fullscreen" | "print" | "png" | "jpeg" | "svg" | "csv" | "xls" | "table";
 };
 
 function getMaxValue(data: MonthlyPoint[]) {
@@ -191,75 +191,29 @@ function TrendChart({
     .join(" ");
 
   const slug = title.toLowerCase().replace(/\s+/g, "-");
-  const run = (action: () => void) => {
+  const run = (action: MenuAction["action"]) => {
     setMenuOpen(false);
-    action();
+    if (action === "fullscreen") void cardRef.current?.requestFullscreen?.();
+    else if (action === "print" && svgRef.current) printSvg(svgRef.current, title);
+    else if (action === "png" && svgRef.current) downloadRaster(svgRef.current, `${slug}.png`, "image/png");
+    else if (action === "jpeg" && svgRef.current) downloadRaster(svgRef.current, `${slug}.jpeg`, "image/jpeg");
+    else if (action === "svg" && svgRef.current) downloadSvg(svgRef.current, `${slug}.svg`);
+    else if (action === "csv") {
+      const csv = ["เดือน,จำนวน", ...data.map((item) => `${escapeCsv(item.label)},${item.value}`)].join("\n");
+      downloadBlob(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }), `${slug}.csv`);
+    } else if (action === "xls") void downloadXls(data, `${slug}.xls`);
+    else if (action === "table") setShowTable((visible) => !visible);
   };
 
   const menuActions: MenuAction[] = [
-    {
-      label: "View in full screen",
-      icon: Maximize2,
-      onClick: () => {
-        void cardRef.current?.requestFullscreen?.();
-      },
-    },
-    {
-      label: "Print chart",
-      icon: Printer,
-      onClick: () => {
-        if (svgRef.current) printSvg(svgRef.current, title);
-      },
-    },
-    {
-      label: "Download PNG image",
-      icon: Download,
-      onClick: () => {
-        if (svgRef.current)
-          downloadRaster(svgRef.current, `${slug}.png`, "image/png");
-      },
-    },
-    {
-      label: "Download JPEG image",
-      icon: Download,
-      onClick: () => {
-        if (svgRef.current)
-          downloadRaster(svgRef.current, `${slug}.jpeg`, "image/jpeg");
-      },
-    },
-    {
-      label: "Download SVG vector image",
-      icon: Download,
-      onClick: () => {
-        if (svgRef.current) downloadSvg(svgRef.current, `${slug}.svg`);
-      },
-    },
-    {
-      label: "Download CSV",
-      icon: Download,
-      onClick: () => {
-        const csv = [
-          "เดือน,จำนวน",
-          ...data.map((item) => `${escapeCsv(item.label)},${item.value}`),
-        ].join("\n");
-        downloadBlob(
-          new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }),
-          `${slug}.csv`,
-        );
-      },
-    },
-    {
-      label: "Download XLS",
-      icon: FileSpreadsheet,
-      onClick: () => {
-        void downloadXls(data, `${slug}.xls`);
-      },
-    },
-    {
-      label: showTable ? "Hide data table" : "Show data table",
-      icon: Table2,
-      onClick: () => setShowTable((visible) => !visible),
-    },
+    { label: "View in full screen", icon: Maximize2, action: "fullscreen" },
+    { label: "Print chart", icon: Printer, action: "print" },
+    { label: "Download PNG image", icon: Download, action: "png" },
+    { label: "Download JPEG image", icon: Download, action: "jpeg" },
+    { label: "Download SVG vector image", icon: Download, action: "svg" },
+    { label: "Download CSV", icon: Download, action: "csv" },
+    { label: "Download XLS", icon: FileSpreadsheet, action: "xls" },
+    { label: showTable ? "Hide data table" : "Show data table", icon: Table2, action: "table" },
   ];
 
   return (
@@ -295,11 +249,11 @@ function TrendChart({
 
           {menuOpen && (
             <div className="absolute right-0 z-30 mt-2 w-[min(16rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
-              {menuActions.map(({ label, icon: Icon, onClick }) => (
+              {menuActions.map(({ label, icon: Icon, action }) => (
                 <button
                   key={label}
                   type="button"
-                  onClick={() => run(onClick)}
+                  onClick={() => run(action)}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
                 >
                   <Icon className="h-4 w-4 shrink-0 text-slate-500" />

@@ -4,7 +4,9 @@ import DashboardCarousel, {
   type DashboardDoctor,
 } from "@/components/dashboard/DashboardCarousel";
 import { SmivTrendCharts, type SmivTrendData } from "@/components/dashboard/SmivTrendCharts";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { observeServerOperation, queryMetrics } from "@/lib/observability/server-performance";
+import { isMissingRelationError } from "@/lib/supabase/errors";
 
 const NON_SMIV_VALUE = "ไม่เข้าข่าย SMI-V";
 const GENDERS = ["ชาย", "หญิง"] as const;
@@ -42,15 +44,6 @@ const DOCTORS: DashboardDoctor[] = [
   { id: "boonprom", name: "พญ. บุญพร้อม เชษฐรตานนท์" },
   { id: "poorchiva", name: "นพ.พูร์ ชีวะสุทโธ", match: "พูร์" },
 ];
-
-function isMissingRelationError(
-  error: { code?: string | null; message?: string | null },
-) {
-  return (
-    error.code === "42P01" ||
-    /relation .* does not exist/i.test(error.message ?? "")
-  );
-}
 
 function countBy(
   rows: DashboardPatientRow[],
@@ -157,10 +150,48 @@ function emptyTrendData(): SmivTrendData {
   return { admit: empty, ior: empty };
 }
 
-async function loadSmivTrendData(): Promise<SmivTrendData> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return emptyTrendData();
+function buildAggregateSeries(
+  rows: Array<{ series: string | null; month_start: string | null; event_count: number | null }>,
+  series: "admit" | "ior",
+): SmivTrendData["admit"] {
+  const counts = new Map(
+    rows
+      .filter((row) => row.series === series && row.month_start)
+      .map((row) => [monthKey(row.month_start as string), Number(row.event_count ?? 0)]),
+  );
+  return getLastEightMonthKeys().map((key) => ({
+    key,
+    label: monthLabel(key),
+    value: counts.get(key) ?? 0,
+  }));
+}
 
+async function loadSmivTrendData(): Promise<SmivTrendData> {
+  const { supabase, user } = await getCurrentUser();
+  if (!supabase || !user) return emptyTrendData();
+
+  const aggregateResult = await observeServerOperation(
+    "dashboard.monthly_trends",
+    () => supabase
+      .from("dashboard_monthly_trends")
+      .select("series, month_start, event_count"),
+    queryMetrics,
+  );
+
+  if (!aggregateResult.error) {
+    const rows = aggregateResult.data ?? [];
+    return {
+      admit: buildAggregateSeries(rows, "admit"),
+      ior: buildAggregateSeries(rows, "ior"),
+    };
+  }
+
+  if (!isMissingRelationError(aggregateResult.error)) {
+    console.error("Dashboard monthly trend query failed", aggregateResult.error.code);
+    return emptyTrendData();
+  }
+
+  // Compatibility during a staged rollout; removed from the hot path once the view exists.
   const [{ data: patients, error: patientsError }, { data: backup, error: backupError }, { data: ior, error: iorError }] = await Promise.all([
     supabase.from("patients").select("admit_date, smi_type"),
     supabase.from("backup").select("admit_date, smi_type"),
@@ -186,14 +217,25 @@ async function loadSmivTrendData(): Promise<SmivTrendData> {
 }
 
 async function loadDashboardData(): Promise<DashboardData> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) {
-    throw new Error("ยังไม่ได้ตั้งค่า Supabase environment variables");
+  const { supabase, user } = await getCurrentUser();
+  if (!supabase || !user) {
+    return {
+      total: 0,
+      general: 0,
+      smiv: 0,
+      wards: GENDERS.map((gender) => ({ gender, total: 0, general: 0, smiv: 0, smivTypes: [0, 0, 0, 0] })),
+      doctors: DOCTORS.map((doctor) => ({ ...doctor, total: 0, general: 0, smiv: 0 })),
+      updatedAt: new Date().toISOString(),
+    };
   }
 
-  const groupedResult = await supabase
-    .from("dashboard_patient_groups")
-    .select("gender, smi_type, oas_score, admitting_doctor, patient_count");
+  const groupedResult = await observeServerOperation(
+    "dashboard.patient_groups",
+    () => supabase
+      .from("dashboard_patient_groups")
+      .select("gender, smi_type, oas_score, admitting_doctor, patient_count"),
+    queryMetrics,
+  );
 
   let rows: DashboardPatientRow[];
 

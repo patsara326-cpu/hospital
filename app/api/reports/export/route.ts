@@ -2,12 +2,13 @@ import "server-only";
 
 import * as XLSX from "xlsx";
 
+import { getCurrentUser } from "@/lib/auth/current-user";
 import {
   loadAllAdmissionReportRows,
   loadAllDischargeReportRows,
+  loadAllIncidentReportRows,
 } from "@/lib/statistics/report-data";
-import type { StatisticReportFilters } from "@/lib/statistics/report-filters";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { IncidentReportFilters, StatisticReportFilters } from "@/lib/statistics/report-filters";
 import { formatDateBE } from "@/lib/utils/date";
 import { reportExportSchema } from "@/lib/validation/report-export";
 import type { Json } from "@/types/database.types";
@@ -33,6 +34,18 @@ function statisticFilters(filters: {
   };
 }
 
+function incidentFilters(filters: {
+  gender?: "" | "ชาย" | "หญิง";
+  month?: string;
+  year?: string;
+  smi_filter?: IncidentReportFilters["smiv"];
+}): IncidentReportFilters {
+  return {
+    gender: filters.gender ?? "", month: filters.month ?? "", year: filters.year ?? "",
+    smiv: filters.smi_filter ?? "", page: 1,
+  };
+}
+
 function displayName(row: {
   first_name: string | null;
   last_name: string | null;
@@ -47,13 +60,11 @@ function displaySubstance(value: string | null) {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createSupabaseServerClient();
+  const { supabase, user, error: userError } = await getCurrentUser();
   if (!supabase) {
     return Response.json({ error: "ยังไม่ได้ตั้งค่า Supabase" }, { status: 503 });
   }
-
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) {
+  if (userError || !user) {
     return Response.json({ error: "กรุณาเข้าสู่ระบบใหม่" }, { status: 401 });
   }
 
@@ -92,14 +103,14 @@ export async function POST(request: Request) {
 
   if (report.source === "database") {
     const gender = report.filters.gender;
-    if (!gender) {
+    if (report.reportType !== "incidents" && !gender) {
       return Response.json({ error: "กรุณาระบุหอผู้ป่วยสำหรับรายงาน" }, { status: 400 });
     }
 
     try {
       const filters = statisticFilters(report.filters);
       if (report.reportType === "admission") {
-        const data = await loadAllAdmissionReportRows(supabase, gender, filters);
+        const data = await loadAllAdmissionReportRows(supabase, gender as "ชาย" | "หญิง", filters);
         headers = [
           "Admit", "HN", "ชื่อ-นามสกุล", "Dx.แรกรับ", "SMIV",
           "การใช้สารเสพติด", "แพทย์ที่รับผิดชอบ", "ที่อยู่",
@@ -114,8 +125,8 @@ export async function POST(request: Request) {
           row.admitting_doctor || "-",
           row.residence_details || "-",
         ]);
-      } else {
-        const data = await loadAllDischargeReportRows(supabase, gender, filters);
+      } else if (report.reportType === "discharge") {
+        const data = await loadAllDischargeReportRows(supabase, gender as "ชาย" | "หญิง", filters);
         headers = [
           "วันที่จำหน่าย", "HN", "ชื่อ-นามสกุล", "Last Dx.", "SMIV",
           "การใช้สารเสพติด", "แพทย์ที่รับผิดชอบ", "ข้อมูลการเยี่ยม", "ที่อยู่",
@@ -130,6 +141,12 @@ export async function POST(request: Request) {
           row.admitting_doctor || "-",
           row.discharge_type || "-",
           row.residence_details || "-",
+        ]);
+      } else {
+        const data = await loadAllIncidentReportRows(supabase, incidentFilters(report.filters));
+        headers = ["HN", "ชื่อ-สกุล", "SMIV type", "Level"];
+        rows = data.map((row) => [
+          row.hn || "-", row.full_name || "-", row.smi_type || "-", row.level || "-",
         ]);
       }
     } catch (error) {

@@ -136,6 +136,24 @@ async function main() {
         "id,hn,prefix,full_name,first_name,last_name,gender,age,smi_type,smi_v_result,substance,substance_use,substance_type,admission_date,admitting_doctor,diagnosis,admission_source,oas_score,oas_risk,oas_risk_level,aggressive_behavior,residence_type,residence_district,residence_subdistrict,residence_details,caregiver_status,caregiver_name,caregiver_relation,caregiver_phone,patient_phone,is_smi_v,extra_data",
       )
       .eq("gender", "ชาย"));
+
+    await measure("dashboard-monthly-trends", () => supabase
+      .from("dashboard_monthly_trends")
+      .select("series,month_start,event_count"));
+
+    await measure("current-ipd-list-page", () => supabase
+      .from("current_ipd_list_rows")
+      .select("id,hn,full_name,first_name,last_name,smi_v_result,admission_date,admitting_doctor", { count: "exact" })
+      .eq("gender", "ชาย")
+      .eq("patient_group", "smiv")
+      .order("created_at", { ascending: false })
+      .limit(20));
+
+    await measure("incident-statistics-page", () => supabase
+      .from("incident_statistics_rows")
+      .select("id,hn,record_date,level,full_name,gender,smi_type", { count: "exact" })
+      .order("report_date", { ascending: false })
+      .limit(20));
   } finally {
     await supabase.auth.signOut();
     const { error: deleteError } = await admin.auth.admin.deleteUser(created.user.id);

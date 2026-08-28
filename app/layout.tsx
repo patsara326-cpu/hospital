@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { cn } from "@/lib/utils";
 import "./globals.css";
@@ -35,7 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-scroll-behavior="smooth"
       className={cn("h-full font-sans antialiased", sarabun.variable, kodchasan.variable)}
     >
-      <body className="min-h-full bg-slate-100 text-slate-900">{children}</body>
+      <body className="min-h-full bg-slate-100 text-slate-900">
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

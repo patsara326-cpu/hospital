@@ -10,7 +10,7 @@ import {
   getTargetLabel,
   type LogSource,
 } from "@/lib/logs/event-labels";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getRequestSupabaseClient } from "@/lib/auth/current-user";
 import {
   LOG_PAGE_SIZE,
   parseLogSearchParams,
@@ -24,7 +24,7 @@ type LogsPageProps = {
 };
 
 export default async function LogsPage({ searchParams }: LogsPageProps) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await getRequestSupabaseClient();
   if (!supabase) redirect("/login");
 
   const { data: role, error: roleError } = await supabase.rpc("current_app_role");

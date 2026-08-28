@@ -36,8 +36,13 @@ async function main() {
       "report_type,gender,report_year",
     ).limit(0),
     supabase.from("current_ipd_rows").select("id,hn,gender,admission_date").limit(0),
+    supabase.from("current_ipd_list_rows").select("id,hn,gender,patient_group,created_at").limit(0),
     supabase.from("dashboard_patient_groups").select(
       "gender,smi_type,oas_score,admitting_doctor,patient_count",
+    ).limit(0),
+    supabase.from("dashboard_monthly_trends").select("series,month_start,event_count").limit(0),
+    supabase.from("incident_statistics_rows").select(
+      "id,hn,record_date,gender,smi_type,report_date,report_year,report_month",
     ).limit(0),
   ];
   const results = await Promise.all(checks);

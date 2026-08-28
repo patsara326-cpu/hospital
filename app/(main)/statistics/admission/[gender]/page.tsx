@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import AdmissionStatistics, {
   type AdmissionStatisticRow,
 } from "@/components/statistics/AdmissionStatistics";
+import { getRequestSupabaseClient } from "@/lib/auth/current-user";
 import {
   loadAdmissionReportPage,
   loadReportYears,
@@ -11,7 +12,6 @@ import {
   parseStatisticReportFilters,
   REPORT_PAGE_SIZE,
 } from "@/lib/statistics/report-filters";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type PageProps = {
   params: Promise<{ gender: string }>;
@@ -32,7 +32,7 @@ export default async function AdmissionStatisticsPage({
   if (!config) notFound();
 
   const filters = parseStatisticReportFilters(rawFilters);
-  const supabase = await createSupabaseServerClient();
+  const supabase = await getRequestSupabaseClient();
   let rows: AdmissionStatisticRow[] = [];
   let years: number[] = [];
   let total = 0;
