@@ -43,6 +43,10 @@ const DOCTORS: DashboardDoctor[] = [
   { id: "poorchiva", name: "นพ.พูร์ ชีวะสุทโธ", match: "พูร์" },
 ];
 
+function isMissingRelationError(error: { code?: string | null; message?: string | null }) {
+  return error.code === "42P01" || /relation .* does not exist/i.test(error.message ?? "");
+}
+
 function countBy(
   rows: DashboardPatientRow[],
   predicate: (row: DashboardPatientRow) => boolean,
