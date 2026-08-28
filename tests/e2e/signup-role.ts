@@ -41,6 +41,7 @@ async function main() {
       });
   if (error) throw error;
   assert.ok(data.user, "Public signup did not return a user");
+  const session = "session" in data ? data.session : null;
 
   try {
     const { data: profile, error: profileError } = await admin
@@ -52,13 +53,13 @@ async function main() {
     assert.equal(profile.username, username);
     assert.equal(profile.role, "clinician");
 
-    if (!createViaAdmin && !data.session) {
+    if (!createViaAdmin && !session) {
       const { error: confirmError } = await admin.auth.admin.updateUserById(data.user.id, {
         email_confirm: true,
       });
       if (confirmError) throw confirmError;
     }
-    if (createViaAdmin || !data.session) {
+    if (!session) {
       const { error: loginError } = await signup.auth.signInWithPassword({ email, password });
       if (loginError) throw loginError;
     }
