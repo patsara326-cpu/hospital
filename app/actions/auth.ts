@@ -85,7 +85,7 @@ export async function loginAction(
     await supabase.auth.signOut();
     return {
       status: "error",
-      message: "บัญชียังไม่ได้รับอนุมัติสิทธิ์จากผู้ดูแลระบบ",
+      message: "บัญชีผู้ใช้ยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
     };
   }
 
@@ -156,7 +156,7 @@ export async function registerAction(
   if (!roleFunctionError || !isMissingDatabaseFunction(roleFunctionError)) {
     return {
       status: "success",
-      message: "สมัครสมาชิกเรียบร้อยแล้ว กรุณารอผู้ดูแลระบบอนุมัติสิทธิ์ก่อนเข้าสู่ระบบ",
+      message: "สมัครสมาชิกเรียบร้อยแล้ว กรุณาเข้าสู่ระบบ",
     };
   }
 

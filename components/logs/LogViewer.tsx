@@ -179,7 +179,6 @@ export default function LogViewer({
                   <option value="clinician">บุคลากรทางคลินิก</option>
                   <option value="auditor">ผู้ตรวจสอบ</option>
                   <option value="admin">ผู้ดูแลระบบ</option>
-                  <option value="pending">รออนุมัติ</option>
                 </select>
               </label>
 

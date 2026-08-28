@@ -46,7 +46,7 @@ const OPERATION_LABELS: Record<string, string> = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  pending: "รออนุมัติ",
+  pending: "บัญชีไม่พร้อมใช้งาน",
   clinician: "บุคลากรทางคลินิก",
   auditor: "ผู้ตรวจสอบ",
   admin: "ผู้ดูแลระบบ",

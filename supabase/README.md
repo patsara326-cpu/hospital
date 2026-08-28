@@ -35,9 +35,9 @@ the remote database automatically because they change access to sensitive health
    update public.users set role = 'admin' where username = 'YOUR_ADMIN_USERNAME';
    ```
 
-Existing auth-linked users are migrated to `clinician`. New registrations receive
-`pending` and cannot access patient data until an administrator assigns `clinician`,
-`auditor`, or `admin`.
+Existing auth-linked users and new registrations receive `clinician` immediately.
+`pending` remains only as an internal deny-by-default sentinel when an authenticated
+account has no valid application profile; it is not part of the approval workflow.
 
 ## Generate remote TypeScript types
 

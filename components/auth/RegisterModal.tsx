@@ -49,7 +49,11 @@ export default function RegisterModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="register-title" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
       <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-3xl border bg-white p-6 shadow-2xl">
         <div className="mb-6 flex items-start justify-between gap-4">
-          <div><p className="text-sm font-medium uppercase tracking-[0.18em] text-indigo-600">Psychiatric Care</p><h2 id="register-title" className="mt-1 text-2xl font-bold">สมัครสมาชิก</h2></div>
+          <div>
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-indigo-600">Psychiatric Care</p>
+            <h2 id="register-title" className="mt-1 text-2xl font-bold">สมัครสมาชิก</h2>
+            <p className="mt-1 text-sm text-slate-500">บัญชีใหม่จะได้รับสิทธิ์บุคลากรทางคลินิกโดยอัตโนมัติ</p>
+          </div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="ปิดหน้าต่างสมัครสมาชิก">×</Button>
         </div>
         <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>

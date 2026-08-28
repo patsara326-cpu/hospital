@@ -224,6 +224,30 @@ test("Supabase hardening migration covers every sensitive table and atomic workf
   assert.match(sql, /set search_path = ''/i);
 });
 
+test("new registrations become clinicians without an approval workflow", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260828001000_signup_clinician_by_default.sql", import.meta.url),
+    "utf8",
+  );
+  const authAction = readFileSync(
+    new URL("../app/actions/auth.ts", import.meta.url),
+    "utf8",
+  );
+  const logViewer = readFileSync(
+    new URL("../components/logs/LogViewer.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(sql, /alter column role set default 'clinician'/i);
+  assert.match(sql, /update public\.users[\s\S]+set role = 'clinician'[\s\S]+where role = 'pending'/i);
+  assert.match(sql, /create or replace function public\.handle_new_auth_user/i);
+  assert.match(sql, /values \([\s\S]+new\.id[\s\S]+'clinician'[\s\S]+\)/i);
+  assert.match(sql, /when public\.users\.role = 'pending' then 'clinician'[\s\S]+else public\.users\.role/i);
+  assert.match(sql, /create policy users_insert_own_clinician[\s\S]+role = 'clinician'/i);
+  assert.doesNotMatch(authAction, /กรุณารอผู้ดูแลระบบอนุมัติสิทธิ์/);
+  assert.doesNotMatch(logViewer, /<option value="pending">/);
+});
+
 test("low-risk performance migration preserves role rules and adds query indexes", () => {
   const sql = readFileSync(
     new URL("../supabase/migrations/20260823000700_low_risk_performance.sql", import.meta.url),
