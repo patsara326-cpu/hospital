@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import ChartActions from "@/components/dashboard/ChartActions";
 
 type MonthlyPoint = { key: string; label: string; value: number };
@@ -30,6 +34,9 @@ function TrendChart({ data, title, description, ariaLabel }: {
   description: string;
   ariaLabel: string;
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const hasData = data.length > 0;
   const safeData = data.length > 0 ? data : [{ key: "empty", label: "ยังไม่มีข้อมูล", value: 0 }];
   const maxValue = getMaxValue(safeData);
   const plotWidth = WIDTH - PADDING.left - PADDING.right;
@@ -42,6 +49,16 @@ function TrendChart({ data, title, description, ariaLabel }: {
   const path = safeData.map((item, index) => `${index === 0 ? "M" : "L"} ${getX(index)} ${getY(item.value)}`).join(" ");
   const slug = title.toLowerCase().replace(/\s+/g, "-");
   const chartId = `${slug}-chart`;
+  const activeIndex = hoveredIndex ?? selectedIndex;
+  const activePoint = activeIndex === null ? null : {
+    item: safeData[activeIndex],
+    x: getX(activeIndex),
+    y: getY(safeData[activeIndex].value),
+  };
+
+  function togglePoint(index: number) {
+    setSelectedIndex((current) => current === index ? null : index);
+  }
 
   return (
     <section className="min-w-0 overflow-visible rounded-[28px] border border-slate-200 bg-white/95 p-3 shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:p-5 md:p-7" aria-labelledby={`${slug}-title`}>
@@ -54,8 +71,8 @@ function TrendChart({ data, title, description, ariaLabel }: {
         <ChartActions chartId={chartId} title={title} slug={slug} data={data} />
       </div>
 
-      <div className="mt-4 w-full min-w-0 sm:mt-6">
-        <svg id={chartId} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" className="block h-auto w-full" role="img" aria-label={ariaLabel}>
+      <div className="relative mt-4 w-full min-w-0 sm:mt-6">
+        <svg id={chartId} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" className="block h-auto w-full" role="group" aria-label={ariaLabel}>
           {ticks.map((tick) => {
             const y = getY(tick);
             return (
@@ -69,16 +86,65 @@ function TrendChart({ data, title, description, ariaLabel }: {
           {safeData.map((item, index) => {
             const x = getX(index);
             const y = getY(item.value);
+            const isActive = activeIndex === index;
             return (
-              <g key={item.key}>
+              <g
+                key={item.key}
+                role={hasData ? "button" : undefined}
+                tabIndex={hasData ? 0 : -1}
+                aria-label={hasData ? `${item.label}: ${item.value.toLocaleString("th-TH")} ราย` : undefined}
+                aria-pressed={hasData ? selectedIndex === index : undefined}
+                className={hasData ? "cursor-pointer outline-none" : undefined}
+                onPointerEnter={() => { if (hasData) setHoveredIndex(index); }}
+                onPointerLeave={() => setHoveredIndex(null)}
+                onFocus={() => { if (hasData) setHoveredIndex(index); }}
+                onBlur={() => setHoveredIndex(null)}
+                onClick={() => { if (hasData) togglePoint(index); }}
+                onKeyDown={(event) => {
+                  if (!hasData) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    togglePoint(index);
+                  } else if (event.key === "Escape") {
+                    setSelectedIndex(null);
+                  }
+                }}
+              >
+                <circle cx={x} cy={y} r="18" fill="transparent" />
                 <text x={x} y={y - 14} textAnchor="middle" fontSize="12" fontWeight="600" fill="currentColor" className="text-slate-700">{item.value}</text>
-                <circle cx={x} cy={y} r="5" fill="currentColor" className="text-indigo-500" />
+                {isActive ? <circle cx={x} cy={y} r="10" fill="currentColor" opacity="0.16" className="text-indigo-600" /> : null}
+                <circle cx={x} cy={y} r={isActive ? 6 : 5} fill="currentColor" className="text-indigo-500 transition-all duration-150" />
                 <circle cx={x} cy={y} r="2.5" fill="white" />
                 <text x={x} y={HEIGHT - 18} textAnchor="middle" fontSize="12" fill="currentColor" className="text-slate-500">{item.label}</text>
               </g>
             );
           })}
         </svg>
+        {hasData && activePoint ? (
+          <>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute w-px border-l border-dashed border-indigo-300"
+              style={{
+                left: `${(activePoint.x / WIDTH) * 100}%`,
+                top: `${(PADDING.top / HEIGHT) * 100}%`,
+                height: `${(plotHeight / HEIGHT) * 100}%`,
+              }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute z-10 w-40 -translate-x-1/2 -translate-y-[calc(100%+0.75rem)] rounded-xl bg-slate-900 px-3 py-2 text-center text-white shadow-xl"
+              style={{
+                left: `clamp(5.25rem, ${(activePoint.x / WIDTH) * 100}%, calc(100% - 5.25rem))`,
+                top: `${(activePoint.y / HEIGHT) * 100}%`,
+              }}
+            >
+              <p className="truncate text-xs text-slate-300">{activePoint.item.label}</p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums">{activePoint.item.value.toLocaleString("th-TH")} ราย</p>
+              <span className="absolute left-1/2 top-full -translate-x-1/2 border-x-[6px] border-t-[7px] border-x-transparent border-t-slate-900" />
+            </div>
+          </>
+        ) : null}
       </div>
 
       <details className="mt-5 w-full max-w-full overflow-hidden rounded-2xl border border-slate-100">
