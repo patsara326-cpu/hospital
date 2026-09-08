@@ -10,7 +10,7 @@ import { downloadExcelFile } from "@/lib/utils/export";
 
 export type IncidentStatisticRow = {
   id: string; hn: string; record_date: string | null; level: string | null;
-  full_name: string; gender: string; smi_type: string;
+  full_name: string; gender: string; smi_type: string; behaviors: string;
 };
 
 export default function IncidentStatistics({ initialRows, total, years, filters, pageSize, routePath, error }: {
@@ -56,8 +56,8 @@ export default function IncidentStatistics({ initialRows, total, years, filters,
       <FilterSelect label="ประเภทผู้ป่วย (SMI-V)" value={filters.smiv} onChange={(value) => changeFilter("smiv", value)}>{STATISTIC_SMI_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</FilterSelect>
     </>}>
     <div className={`mt-6 overflow-x-auto rounded-2xl border border-slate-200 ${navigationPending ? "opacity-60" : ""}`} aria-busy={navigationPending}>
-      <table className="min-w-full divide-y divide-slate-200 text-left text-sm"><thead className="bg-amber-600 text-white"><tr>{["HN", "ชื่อ-สกุล", "SMIV type", "Level"].map((heading) => <th key={heading} className="whitespace-nowrap px-3 py-3 font-semibold">{heading}</th>)}</tr></thead>
-        <tbody className="divide-y divide-slate-200 bg-white">{initialRows.length === 0 ? <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">ยังไม่มีข้อมูล IOR</td></tr> : initialRows.map((row) => <tr key={row.id} className="hover:bg-slate-50"><td className="px-3 py-2 font-medium text-slate-800">{row.hn || "-"}</td><td className="px-3 py-2 text-slate-700">{row.full_name || "-"}</td><td className="px-3 py-2 text-slate-700">{row.smi_type || "-"}</td><td className="px-3 py-2 text-slate-700">{row.level || "-"}</td></tr>)}</tbody>
+      <table className="min-w-full divide-y divide-slate-200 text-left text-sm"><thead className="bg-amber-600 text-white"><tr>{["HN", "ชื่อ-สกุล", "SMIV type", "พฤติกรรม", "Level"].map((heading) => <th key={heading} className="whitespace-nowrap px-3 py-3 font-semibold">{heading}</th>)}</tr></thead>
+        <tbody className="divide-y divide-slate-200 bg-white">{initialRows.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">ยังไม่มีข้อมูล IOR</td></tr> : initialRows.map((row) => <tr key={row.id} className="hover:bg-slate-50"><td className="px-3 py-2 font-medium text-slate-800">{row.hn || "-"}</td><td className="px-3 py-2 text-slate-700">{row.full_name || "-"}</td><td className="px-3 py-2 text-slate-700">{row.smi_type || "-"}</td><td className="min-w-72 px-3 py-2 text-slate-700">{row.behaviors}</td><td className="px-3 py-2 text-slate-700">{row.level || "-"}</td></tr>)}</tbody>
       </table>
     </div>
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600"><span>{navigationPending ? "กำลังโหลดข้อมูล..." : `หน้า ${filters.page} จาก ${totalPages}`}</span><div className="flex gap-2"><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || filters.page <= 1} onPointerEnter={() => prefetch({ page: filters.page - 1 })} onFocus={() => prefetch({ page: filters.page - 1 })} onClick={() => navigate({ page: filters.page - 1 })}>ก่อนหน้า</button><button type="button" className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-50" disabled={navigationPending || filters.page >= totalPages} onPointerEnter={() => prefetch({ page: filters.page + 1 })} onFocus={() => prefetch({ page: filters.page + 1 })} onClick={() => navigate({ page: filters.page + 1 })}>ถัดไป</button></div></div>

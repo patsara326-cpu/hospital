@@ -3,15 +3,18 @@ import { getRequestSupabaseClient } from "@/lib/auth/current-user";
 import { observeServerOperation, queryMetrics } from "@/lib/observability/server-performance";
 import { loadIncidentReportPage, loadReportYears } from "@/lib/statistics/report-data";
 import { INCIDENT_PAGE_SIZE, parseIncidentReportFilters } from "@/lib/statistics/report-filters";
+import { formatIorBehaviors } from "@/lib/utils/ior";
+import type { Json } from "@/types/database.types";
 
 function rowFromView(row: {
   id: string | null; hn: string | null; record_date: string | null; level: string | null;
-  full_name: string | null; gender: string | null; smi_type: string | null;
+  full_name: string | null; gender: string | null; smi_type: string | null; behaviors: Json | null;
 }): IncidentStatisticRow | null {
   if (!row.id) return null;
   return {
     id: row.id, hn: row.hn ?? "", record_date: row.record_date, level: row.level,
     full_name: row.full_name ?? "-", gender: row.gender ?? "", smi_type: row.smi_type ?? "-",
+    behaviors: formatIorBehaviors(row.behaviors),
   };
 }
 

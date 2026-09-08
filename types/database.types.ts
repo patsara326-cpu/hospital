@@ -489,6 +489,7 @@ export type Database = {
       }
       incident_statistics_rows: {
         Row: {
+          behaviors: Json | null
           full_name: string | null
           gender: string | null
           hn: string | null

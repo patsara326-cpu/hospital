@@ -10,6 +10,7 @@ import {
 } from "@/lib/statistics/report-data";
 import type { IncidentReportFilters, StatisticReportFilters } from "@/lib/statistics/report-filters";
 import { formatDateBE } from "@/lib/utils/date";
+import { formatIorBehaviors } from "@/lib/utils/ior";
 import { reportExportSchema } from "@/lib/validation/report-export";
 import type { Json } from "@/types/database.types";
 
@@ -144,9 +145,10 @@ export async function POST(request: Request) {
         ]);
       } else {
         const data = await loadAllIncidentReportRows(supabase, incidentFilters(report.filters));
-        headers = ["HN", "ชื่อ-สกุล", "SMIV type", "Level"];
+        headers = ["HN", "ชื่อ-สกุล", "SMIV type", "พฤติกรรม", "Level"];
         rows = data.map((row) => [
-          row.hn || "-", row.full_name || "-", row.smi_type || "-", row.level || "-",
+          row.hn || "-", row.full_name || "-", row.smi_type || "-",
+          formatIorBehaviors(row.behaviors), row.level || "-",
         ]);
       }
     } catch (error) {

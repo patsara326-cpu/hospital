@@ -27,6 +27,7 @@ import {
   getThailandDateParts,
   todayISOInThailand,
 } from "../lib/utils/date.ts";
+import { formatIorBehaviors } from "../lib/utils/ior.ts";
 import { calculateRisk } from "../lib/utils/risk.ts";
 import { assessmentSchema } from "../lib/validation/assessment.ts";
 import { loginSchema, registerSchema } from "../lib/validation/auth.ts";
@@ -225,6 +226,13 @@ test("Supabase hardening migration covers every sensitive table and atomic workf
   assert.match(sql, /create or replace view public\.ior_statistics/i);
   assert.match(sql, /revoke all on function[\s\S]+from public, anon/i);
   assert.match(sql, /set search_path = ''/i);
+});
+
+test("IOR behaviors are formatted for incident statistics", () => {
+  assert.equal(formatIorBehaviors(["ทำร้ายตนเอง", "ทำร้ายผู้อื่น"]), "ทำร้ายตนเอง, ทำร้ายผู้อื่น");
+  assert.equal(formatIorBehaviors("ทำร้ายตนเอง"), "ทำร้ายตนเอง");
+  assert.equal(formatIorBehaviors([]), "-");
+  assert.equal(formatIorBehaviors(null), "-");
 });
 
 test("new registrations become clinicians without an approval workflow", () => {
@@ -436,6 +444,19 @@ test("page-loading performance views are bounded, filterable, and RLS preserving
   assert.match(sql, /'incidents'::text[\s\S]+incident_statistics_rows/i);
   assert.match(sql, /ior_records_record_date_id_idx/i);
   assert.doesNotMatch(sql, /grant select[\s\S]+to anon/i);
+});
+
+test("incident statistics expose IOR behaviors through the report view", () => {
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260909001400_add_incident_behaviors.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(sql, /create or replace view public\.incident_statistics_rows/i);
+  assert.match(sql, /incident\.behaviors/i);
+  assert.match(sql, /with \(security_invoker = true\)/i);
+  assert.match(sql, /revoke all on public\.incident_statistics_rows from public, anon/i);
+  assert.match(sql, /grant select on public\.incident_statistics_rows to authenticated/i);
 });
 
 test("incident URL filters preserve the old SMI-V semantics and pagination", () => {

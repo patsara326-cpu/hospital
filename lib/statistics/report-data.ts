@@ -14,7 +14,7 @@ import type { Database } from "@/types/database.types";
 
 const ADMISSION_COLUMNS = "id, admission_date, admitting_doctor, diagnosis, first_name, full_name, gender, hn, last_name, residence_details, residence_district, residence_type, smi_v_result, substance_type, report_date, report_year, report_month";
 const DISCHARGE_COLUMNS = "id, hn, full_name, gender, discharge_date, discharge_type, last_diagnosis, smi_type, admitting_doctor, first_name, last_name, substance_type, residence_type, residence_district, residence_details, report_date, report_year, report_month";
-const INCIDENT_COLUMNS = "id, hn, record_date, level, full_name, gender, smi_type, report_date, report_year, report_month";
+const INCIDENT_COLUMNS = "id, hn, record_date, level, full_name, gender, smi_type, behaviors, report_date, report_year, report_month";
 const EXPORT_BATCH_SIZE = 1_000;
 const MAX_EXPORT_ROWS = 10_000;
 

@@ -172,14 +172,30 @@ test("authenticated clinical lifecycle and exports", async ({ page }) => {
       await expect(page.locator('[name="hn"]')).toHaveValue("");
       await expect(page.locator('[name="dischargeMethod"]')).toHaveCount(0);
 
+      await page.goto("/ior");
+      await page.locator('[name="hn"]').fill(hn);
+      await page.getByRole("button", { name: "ค้นหา", exact: true }).click();
+      await expect(page.getByText(`HN: ${hn}`)).toBeVisible();
+      await page.locator('[name="behaviors"]').first().check();
+      await page.locator('[name="level"][value="C"]').check();
+      await page
+        .getByRole("main")
+        .getByRole("button", { name: "บันทึกข้อมูล", exact: true })
+        .click();
+      await expect(page.getByText("บันทึกข้อมูลสำเร็จ")).toBeVisible();
+
       await page.goto("/statistics/discharge/male");
       await page.getByLabel("ประเภทผู้ป่วย (SMI-V)").selectOption("SMI-V");
       await expect(page.getByRole("main").getByText(hn, { exact: true })).toBeVisible();
       await page.goto("/statistics/incidents");
       await page.getByLabel(/SMI-V/).selectOption("SMI-V");
-      const archivedIorRow = page.locator("tbody tr").filter({ hasText: hn });
+      await expect(page.locator("thead th")).toHaveText([
+        "HN", "ชื่อ-สกุล", "SMIV type", "พฤติกรรม", "Level",
+      ]);
+      const archivedIorRow = page.locator("tbody tr").filter({ hasText: hn }).first();
       await expect(archivedIorRow).toBeVisible();
       await expect(archivedIorRow).toContainText("PhaseFive");
+      await expect(archivedIorRow).toContainText("ทะเลาะวิวาท/อาละวาดทำร้ายผู้ป่วยอื่น/สิ่งของ");
 
       await page.goto("/history");
       await page.locator('[name="hn"]').fill(hn);

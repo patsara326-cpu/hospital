@@ -5,11 +5,13 @@ import DashboardCarousel, {
 } from "@/components/dashboard/DashboardCarousel";
 import { SmivTrendCharts, type SmivTrendData } from "@/components/dashboard/SmivTrendCharts";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { IOR_LEVELS } from "@/lib/constants/ior";
 import { observeServerOperation, queryMetrics } from "@/lib/observability/server-performance";
 import { isMissingFunctionError, isMissingRelationError } from "@/lib/supabase/errors";
 import { cache, Suspense } from "react";
 
 const NON_SMIV_VALUE = "ไม่เข้าข่าย SMI-V";
+const IOR_TREND_LEVELS = new Set<string>(IOR_LEVELS.slice(1));
 const GENDERS = ["ชาย", "หญิง"] as const;
 const THAI_MONTHS = [
   "ม.ค.",
@@ -34,6 +36,7 @@ type DateRow = {
 type IorTrendRow = {
   record_date: string | null;
   smi_type: string | null;
+  level: string | null;
 };
 
 type DashboardPatientGroupRow = {
@@ -269,7 +272,7 @@ async function loadSmivTrendData(): Promise<SmivTrendData> {
   const [{ data: patients, error: patientsError }, { data: backup, error: backupError }, { data: ior, error: iorError }] = await Promise.all([
     supabase.from("patients").select("admit_date, smi_type"),
     supabase.from("backup").select("admit_date, smi_type"),
-    supabase.from("ior_statistics").select("record_date, smi_type"),
+    supabase.from("ior_statistics").select("record_date, smi_type, level"),
   ]);
 
   if (patientsError) console.error("SMI-V trend patients query failed", patientsError);
@@ -281,7 +284,13 @@ async function loadSmivTrendData(): Promise<SmivTrendData> {
     .map((row) => row.admit_date as string);
 
   const iorDates = (ior ?? [] as IorTrendRow[])
-    .filter((row) => row.smi_type !== null && row.smi_type !== NON_SMIV_VALUE && row.record_date)
+    .filter((row) =>
+      row.smi_type !== null
+      && row.smi_type !== NON_SMIV_VALUE
+      && row.level !== null
+      && IOR_TREND_LEVELS.has(row.level)
+      && row.record_date,
+    )
     .map((row) => row.record_date as string);
 
   return {
